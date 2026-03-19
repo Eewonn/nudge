@@ -30,7 +30,10 @@ export default async function ReviewPage() {
   const completion = computeDailyCompletion(tasks);
   const streak     = computeStreak(tasks, logs);
   const grade      = computePerformanceScore(streak, completion.pct);
-  const firstName  = firstNameFromEmail(user?.email ?? "there");
+  const meta = user?.user_metadata;
+  const firstName = meta?.full_name?.split(" ")[0]
+    || meta?.name?.split(" ")[0]
+    || firstNameFromEmail(user?.email ?? "there");
 
   // Candidate tasks for top-3 picker
   const candidateTasks = [...grouped.today, ...grouped.upcoming];

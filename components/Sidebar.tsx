@@ -45,7 +45,7 @@ export default function Sidebar() {
           className="text-[10px] uppercase tracking-widest font-bold mt-0.5"
           style={{ color: "var(--sb-fg)", opacity: 0.6 }}
         >
-          personal reminder
+          stay on track
         </p>
       </div>
 

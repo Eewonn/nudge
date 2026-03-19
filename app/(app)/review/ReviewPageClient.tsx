@@ -41,7 +41,7 @@ function TaskCard({ task }: { task: Task }) {
     task.importance === "medium" ? "var(--imp-medium)" : "var(--imp-low)";
   const badgeLabel =
     task.importance === "high" ? "High Priority" :
-    task.importance === "medium" ? "Medium" : "Low";
+    task.importance === "medium" ? "Medium Priority" : "Low Priority";
 
   const dueLabel = task.due_at
     ? new Date(task.due_at).toLocaleString(undefined, {
@@ -149,16 +149,16 @@ export default function ReviewPageClient({
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className="space-y-2">
         <p className="text-xs font-bold tracking-[0.2em] uppercase" style={{ color: "var(--text-3)" }}>
-          Daily Audit · {formatDate(today)}
+          Daily Review · {formatDate(today)}
         </p>
         <h1 className="font-headline text-5xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
-          Well done, {firstName}.
+          {completion.pct === 100 ? `Nice work, ${firstName}.` : `Hey, ${firstName}.`}
         </h1>
         <p className="text-lg" style={{ color: "var(--text-2)" }}>
-          Your structural integrity for today stands at{" "}
-          <span className="font-bold" style={{ color: "var(--accent)" }}>
-            {GRADE_LABEL[grade]}
-          </span>.
+          {completion.done === 0
+            ? "No tasks completed yet today."
+            : <>You&apos;ve completed <span className="font-bold" style={{ color: "var(--accent)" }}>{completion.done} of {completion.total} tasks</span> today.</>
+          }
         </p>
       </div>
 
@@ -192,11 +192,11 @@ export default function ReviewPageClient({
         >
           <div>
             <p className="text-xs font-bold uppercase tracking-widest mb-4 opacity-80">
-              Efficiency Score
+              Today&apos;s Score
             </p>
             <h3 className="text-6xl font-extrabold font-headline">{grade}</h3>
           </div>
-          <p className="text-sm opacity-80">{GRADE_LABEL[grade]} performance today.</p>
+          <p className="text-sm opacity-80">{GRADE_LABEL[grade]} today.</p>
         </div>
 
         {/* Streak */}
@@ -246,7 +246,7 @@ export default function ReviewPageClient({
           <div className="col-span-3 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="font-headline text-2xl font-bold" style={{ color: "var(--text)" }}>
-                Unfinished Blueprints
+                Unfinished Tasks
               </h2>
               {unfinishedTasks.length > 0 && (
                 <span
@@ -297,13 +297,13 @@ export default function ReviewPageClient({
                   className="text-[10px] font-black uppercase tracking-widest mb-2 block"
                   style={{ color: "var(--text-3)" }}
                 >
-                  Executive Summary
+                  How did today go?
                 </label>
                 <textarea
                   value={summary}
                   onChange={(e) => setSummary(e.target.value)}
                   rows={5}
-                  placeholder="What architectural shifts occurred today? What will define tomorrow's progress?"
+                  placeholder="What went well? What do you want to carry into tomorrow?"
                   className="w-full rounded-lg p-4 text-sm leading-relaxed resize-none outline-none transition-all"
                   style={{
                     backgroundColor: "var(--surface)",
@@ -322,7 +322,7 @@ export default function ReviewPageClient({
                     className="text-[10px] font-black uppercase tracking-widest block"
                     style={{ color: "var(--text-3)" }}
                   >
-                    Strategic Focus for Tomorrow
+                    Top 3 for Tomorrow
                     <span className="ml-2 normal-case font-medium tracking-normal">
                       ({top3.length} / 3)
                     </span>
@@ -367,7 +367,7 @@ export default function ReviewPageClient({
                 className="w-full sovereign-gradient text-white rounded-xl py-4 font-bold text-lg flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] disabled:opacity-50"
                 style={{ boxShadow: "0 8px 20px rgba(26,64,194,0.25)", marginTop: "8px" }}
               >
-                <span>{pending ? "Saving…" : saved ? "Update Log" : "Seal Today's Log"}</span>
+                <span>{pending ? "Saving…" : saved ? "Update Review" : "Save Review"}</span>
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
@@ -375,70 +375,13 @@ export default function ReviewPageClient({
 
               {saved && (
                 <p className="text-center text-xs" style={{ color: "var(--text-3)" }}>
-                  ✓ Review sealed for today
+                  ✓ Saved
                 </p>
               )}
             </div>
           </div>
         </div>
       </form>
-
-      {/* ── Footer summary ──────────────────────────────────────── */}
-      <div
-        className="rounded-xl p-8 flex flex-col md:flex-row items-center justify-between gap-8"
-        style={{ backgroundColor: "var(--surface-2)", border: "1px solid var(--border)" }}
-      >
-        <div className="flex items-center gap-6">
-          {/* Circular progress */}
-          <div className="relative w-24 h-24">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-              <circle
-                cx="18" cy="18" r="15.9"
-                fill="none" strokeWidth="3"
-                stroke="var(--border-strong)"
-              />
-              <circle
-                cx="18" cy="18" r="15.9"
-                fill="none" strokeWidth="3"
-                stroke="var(--accent)"
-                strokeDasharray={`${completion.pct} ${100 - completion.pct}`}
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-lg font-black font-headline" style={{ color: "var(--text)" }}>
-                {completion.done}/{completion.total}
-              </span>
-            </div>
-          </div>
-          <div>
-            <h5 className="text-xl font-bold font-headline" style={{ color: "var(--text)" }}>
-              Daily Milestones
-            </h5>
-            <p className="text-sm mt-1" style={{ color: "var(--text-3)" }}>
-              {completion.total - completion.done > 0
-                ? `${completion.total - completion.done} action${completion.total - completion.done !== 1 ? "s" : ""} away from a perfect score.`
-                : "Perfect day achieved."}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-4">
-          <div
-            className="px-6 py-4 rounded-xl text-center"
-            style={{ backgroundColor: "var(--surface)" }}
-          >
-            <p className="text-xs font-bold uppercase" style={{ color: "var(--text-3)" }}>Score</p>
-            <p className="text-2xl font-black font-headline" style={{ color: "var(--accent)" }}>{grade}</p>
-          </div>
-          <div
-            className="px-6 py-4 rounded-xl text-center"
-            style={{ backgroundColor: "var(--surface)" }}
-          >
-            <p className="text-xs font-bold uppercase" style={{ color: "var(--text-3)" }}>Streak</p>
-            <p className="text-2xl font-black font-headline" style={{ color: "var(--accent)" }}>{streak}d</p>
-          </div>
-        </div>
-      </div>
 
       {/* ── Past reviews ───────────────────────────────────────── */}
       {recentReviews.length > 0 && (

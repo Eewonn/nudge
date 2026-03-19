@@ -83,7 +83,7 @@ function TaskCard({ task }: { task: Task }) {
     task.importance === "medium" ? "var(--imp-medium)" : "var(--imp-low)";
   const badgeLabel =
     task.importance === "high" ? "High Priority" :
-    task.importance === "medium" ? "Medium" : "Low";
+    task.importance === "medium" ? "Medium Priority" : "Low Priority";
 
   const dueLabel = task.due_at
     ? new Date(task.due_at).toLocaleString(undefined, {
@@ -284,7 +284,7 @@ export default function DashboardClient({
       {/* ── Header ──────────────────────────────────────────────── */}
       <header>
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: "var(--text-3)" }}>
-          Morning Briefing · {dateLabel}
+          {dateLabel}
         </p>
         <h1 className="text-5xl font-extrabold tracking-tight font-headline" style={{ color: "var(--text)" }}>
           {greetingText}
@@ -316,7 +316,7 @@ export default function DashboardClient({
           <Zap className="h-4 w-4 text-white" />
         </div>
         <span className="flex-1 text-sm font-medium" style={{ color: "var(--text-3)" }}>
-          What requires your attention?
+          What do you need to get done?
         </span>
         <span
           className="sovereign-gradient rounded-lg px-3 py-1.5 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-all duration-200"
@@ -617,13 +617,13 @@ export default function DashboardClient({
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = ""; }}
           >
             <p className="text-[10px] font-bold uppercase tracking-widest opacity-60 mb-2" style={{ color: "var(--accent)" }}>
-              Architectural Ethos
+              Daily Review
             </p>
             <p className="text-base font-bold leading-snug font-headline" style={{ color: "var(--accent)" }}>
-              Order is the Soul of Progress.
+              Stay consistent, ship often.
             </p>
             <p className="text-xs mt-3 font-medium" style={{ color: "var(--text-3)" }}>
-              → Seal today&apos;s log
+              → Log your day
             </p>
           </Link>
         </div>

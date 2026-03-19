@@ -134,6 +134,7 @@ export function computePerformanceScore(streak: number, completionPct: number): 
 
 export function firstNameFromEmail(email: string): string {
   const local = email.split("@")[0];
-  const part = local.split(/[._-]/)[0];
+  const part = local.split(/[._-]/)[0].replace(/\d+$/, "");
+  if (!part) return "there";
   return part.charAt(0).toUpperCase() + part.slice(1);
 }

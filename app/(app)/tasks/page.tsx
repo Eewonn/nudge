@@ -11,7 +11,7 @@ export default async function TasksPage() {
     .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime());
 
   return (
-    <div className="mx-auto max-w-4xl p-8">
+    <div className="p-8">
       <TaskList grouped={grouped} completedTasks={completed} />
     </div>
   );

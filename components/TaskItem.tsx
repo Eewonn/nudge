@@ -31,8 +31,8 @@ export default function TaskItem({ task, urgency }: Props) {
                                    "var(--imp-low)";
 
   const badgeLabel =
-    task.importance === "high" ? "High" :
-    task.importance === "medium" ? "Medium" : "Low";
+    task.importance === "high" ? "High Priority" :
+    task.importance === "medium" ? "Medium Priority" : "Low Priority";
 
   const isOverdue = urgency === "overdue" && !task.is_completed;
 

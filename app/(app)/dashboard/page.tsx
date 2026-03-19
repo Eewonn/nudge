@@ -42,7 +42,10 @@ export default async function DashboardPage() {
     logs.some((l) => l.habit_id === h.id && l.date === today)
   ).length;
 
-  const firstName = firstNameFromEmail(user?.email ?? "there");
+  const meta = user?.user_metadata;
+  const firstName = meta?.full_name?.split(" ")[0]
+    || meta?.name?.split(" ")[0]
+    || firstNameFromEmail(user?.email ?? "there");
   const greetingText = greeting(firstName);
 
   // Urgent = overdue + high/medium importance today

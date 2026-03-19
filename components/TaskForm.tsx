@@ -20,9 +20,9 @@ const IMPORTANCES: {
   description: string;
   color: string;
 }[] = [
-  { value: "high",   label: "High Importance",   description: "Non-negotiable, high impact",   color: "var(--imp-high)" },
-  { value: "medium", label: "Medium Importance", description: "Strategic, high value",          color: "var(--imp-medium)" },
-  { value: "low",    label: "Low Importance",    description: "Routine, low friction",          color: "var(--imp-low)" },
+  { value: "high",   label: "High Priority",   description: "Must do — blocks everything else",  color: "var(--imp-high)" },
+  { value: "medium", label: "Medium Priority", description: "Important, but not on fire",         color: "var(--imp-medium)" },
+  { value: "low",    label: "Low Priority",    description: "Nice to do when I have time",        color: "var(--imp-low)" },
 ];
 
 interface Props {
@@ -92,7 +92,7 @@ export default function TaskForm({ task, onClose }: Props) {
         >
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-3)" }}>
-              {isEdit ? "Edit Blueprint" : "New Blueprint"}
+              {isEdit ? "Edit Task" : "New Task"}
             </p>
           </div>
           <button
@@ -119,13 +119,13 @@ export default function TaskForm({ task, onClose }: Props) {
           {/* Title — underline input */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
-              Objective Title
+              Task
             </label>
             <input
               ref={titleRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="What requires your attention?"
+              placeholder="What do you need to get done?"
               className="w-full text-2xl font-bold bg-transparent outline-none pb-3 transition-all"
               style={{
                 color: "var(--text)",
@@ -162,7 +162,7 @@ export default function TaskForm({ task, onClose }: Props) {
             {/* Date */}
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
-                Strategic Timeline
+                Due Date
               </label>
               <div
                 className="flex items-center gap-2.5 rounded-lg px-4 py-2.5 transition-colors"
@@ -184,7 +184,7 @@ export default function TaskForm({ task, onClose }: Props) {
             {/* Category */}
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
-                Primary Category
+                Category
               </label>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map((c) => (
@@ -209,7 +209,7 @@ export default function TaskForm({ task, onClose }: Props) {
           {/* Importance plinths */}
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
-              Hierarchy of Importance
+              Priority
             </label>
             <div className="space-y-2">
               {IMPORTANCES.map((imp) => {
@@ -290,7 +290,7 @@ export default function TaskForm({ task, onClose }: Props) {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
               </svg>
-              {pending ? "Saving…" : isEdit ? "Save Changes" : "Commit to Ledger"}
+              {pending ? "Saving…" : isEdit ? "Save Changes" : "Add Task"}
             </button>
           </div>
         </form>

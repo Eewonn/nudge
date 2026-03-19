@@ -80,13 +80,14 @@ export function computeDailyCompletion(tasks: Task[], now = new Date()): DailyCo
     (t) => t.is_completed && t.completed_at && t.completed_at.slice(0, 10) === todayStr
   ).length;
 
-  const dueToday = tasks.filter((t) => {
+  const pendingDueToday = tasks.filter((t) => {
+    if (t.is_completed) return false;
     if (!t.due_at) return false;
     const due = new Date(t.due_at);
     return due >= startOfToday && due < startOfTomorrow;
   }).length;
 
-  const total = completedToday + dueToday;
+  const total = completedToday + pendingDueToday;
   return {
     done: completedToday,
     total,

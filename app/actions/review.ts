@@ -41,7 +41,7 @@ export async function upsertReview(
   const { data, error } = await supabase
     .from("daily_reviews")
     .upsert(
-      { user_id: user.id, review_date, summary, top_3_for_tomorrow, updated_at: new Date().toISOString() },
+      { user_id: user.id, review_date, summary, top_3_for_tomorrow },
       { onConflict: "user_id,review_date" }
     )
     .select()

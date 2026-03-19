@@ -253,10 +253,15 @@ interface Props {
   todayHabitsDone: number;
 }
 
-function getLast7Dates(): string[] {
+function getCurrentWeekDates(): string[] {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun … 6=Sat
+  const daysSinceMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - daysSinceMonday);
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
     return d.toISOString().slice(0, 10);
   });
 }
@@ -281,8 +286,8 @@ export default function DashboardClient({
   const [, startTransition] = useTransition();
   const router = useRouter();
   const todayDoneSet = new Set(habitLogs.map((l) => l.habit_id));
-  const last7 = getLast7Dates();
-  const todayIdx = 6; // today is always the last in the 7-day window
+  const last7 = getCurrentWeekDates();
+  const todayIdx = last7.indexOf(today);
 
   const now = new Date();
   const dateLabel = now.toLocaleDateString(undefined, {

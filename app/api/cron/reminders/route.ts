@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase-server";
+import { createAdminClient } from "@/lib/supabase-admin";
 import { getPendingReminders, type ReminderType } from "@/lib/reminders";
 import { sendEmail } from "@/lib/email";
 import { dailyDigest, due24h, due2h, overdueOnce } from "@/lib/email-templates";
@@ -14,24 +14,48 @@ function isAuthorized(req: NextRequest): boolean {
   return auth === `Bearer ${secret}`;
 }
 
+// Vercel cron jobs send GET requests
+export async function GET(req: NextRequest) {
+  return handler(req);
+}
+
 export async function POST(req: NextRequest) {
+  return handler(req);
+}
+
+async function handler(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  // ── Fetch the single app user ──────────────────────────────────────────
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) {
-    // For a cron job we need a service-role approach; fall back to anon user list
+  // ── Get the single app user ────────────────────────────────────────────
+  const { data: { users }, error: usersError } = await admin.auth.admin.listUsers();
+  if (usersError || !users.length) {
     return NextResponse.json({ error: "Could not resolve user" }, { status: 500 });
   }
+  const user = users[0];
+  const meta = user.user_metadata ?? {};
+
+  // ── Check master email toggle ──────────────────────────────────────────
+  const emailEnabled = meta.notif_email_enabled ?? true;
+  if (!emailEnabled) {
+    return NextResponse.json({ ran: 0, results: [], note: "Email reminders disabled by user" });
+  }
+
+  const prefMap: Record<ReminderType, boolean> = {
+    "daily-digest": meta.notif_daily_digest ?? true,
+    "due-24h":      meta.notif_due_24h      ?? true,
+    "due-2h":       meta.notif_due_2h       ?? true,
+    "overdue-once": meta.notif_overdue      ?? true,
+  };
 
   // ── Fetch active tasks ─────────────────────────────────────────────────
-  const { data: tasks, error: tasksError } = await supabase
+  const { data: tasks, error: tasksError } = await admin
     .from("tasks")
     .select("*")
+    .eq("user_id", user.id)
     .eq("is_completed", false);
 
   if (tasksError) {
@@ -40,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   // ── Fetch recent reminder_logs (last 48h) ──────────────────────────────
   const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  const { data: logs, error: logsError } = await supabase
+  const { data: logs, error: logsError } = await admin
     .from("reminder_logs")
     .select("task_id, reminder_type, sent_at")
     .eq("user_id", user.id)
@@ -54,12 +78,13 @@ export async function POST(req: NextRequest) {
   const grouped = groupTasks(tasks as Task[]);
   const digestTasks = [...grouped.overdue, ...grouped.today];
 
-  // ── Get pending reminders ──────────────────────────────────────────────
-  const pending = getPendingReminders(
+  // ── Get pending reminders, filtered by user prefs ─────────────────────
+  const allPending = getPendingReminders(
     tasks as Task[],
     logs as { task_id: string | null; reminder_type: ReminderType; sent_at: string }[],
     digestTasks
   );
+  const pending = allPending.filter(({ type }) => prefMap[type]);
 
   const results: { type: ReminderType; taskId: string | null; ok: boolean; error?: string }[] = [];
 
@@ -80,8 +105,7 @@ export async function POST(req: NextRequest) {
 
       await sendEmail(subject, html);
 
-      // Log success
-      await supabase.from("reminder_logs").insert({
+      await admin.from("reminder_logs").insert({
         task_id: task?.id ?? null,
         user_id: user.id,
         reminder_type: type,
@@ -92,8 +116,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
 
-      // Log failure (best-effort)
-      await supabase.from("reminder_logs").insert({
+      await admin.from("reminder_logs").insert({
         task_id: task?.id ?? null,
         user_id: user.id,
         reminder_type: type,
@@ -104,8 +127,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ran: results.length,
-    results,
-  });
+  return NextResponse.json({ ran: results.length, results });
 }

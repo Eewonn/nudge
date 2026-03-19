@@ -98,15 +98,26 @@ export default function Sidebar() {
 
       {/* Bottom */}
       <div className="space-y-1 pt-6" style={{ borderTop: "1px solid var(--sb-border)" }}>
-        <button
+        <Link
+          href="/settings"
           className="flex w-full items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
-          style={{ color: "var(--sb-fg)" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--sb-hover-bg)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+          style={{
+            color: pathname === "/settings" ? "var(--sb-fg-active)" : "var(--sb-fg)",
+            fontWeight: pathname === "/settings" ? 700 : 500,
+          }}
+          onMouseEnter={(e) => {
+            if (pathname !== "/settings") (e.currentTarget as HTMLElement).style.backgroundColor = "var(--sb-hover-bg)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+          }}
         >
-          <Settings className="h-4 w-4 shrink-0" />
+          <Settings
+            className="h-4 w-4 shrink-0"
+            style={{ color: pathname === "/settings" ? "var(--sb-accent)" : "var(--sb-fg)" }}
+          />
           <span>Settings</span>
-        </button>
+        </Link>
 
         <button
           onClick={handleSignOut}

@@ -15,13 +15,21 @@ import type { DailyCompletion, DayRhythm } from "@/lib/stats";
 function WeeklyRhythm({ rhythm }: { rhythm: DayRhythm[] }) {
   const max = Math.max(...rhythm.map((d) => d.count), 1);
   const today = new Date().toISOString().slice(0, 10);
+  const hasRhythmData = rhythm.some((d) => d.count > 0);
 
   return (
     <div
       className="rounded-xl p-6"
       style={{ backgroundColor: "var(--surface-2)", border: "1px solid var(--border)" }}
     >
-      <div className="flex items-end justify-between h-32 gap-2">
+      {!hasRhythmData ? (
+        <div className="h-32 flex items-center justify-center">
+          <p className="text-sm text-center" style={{ color: "var(--text-3)" }}>
+            Complete tasks to build your rhythm
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-end justify-between h-32 gap-2">
         {rhythm.map((day) => {
           const heightPct = (day.count / max) * 100;
           const isToday = day.date === today;
@@ -54,7 +62,8 @@ function WeeklyRhythm({ rhythm }: { rhythm: DayRhythm[] }) {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
       <div
         className="mt-6 pt-4 flex justify-between items-center"
         style={{ borderTop: "1px solid var(--border)" }}
@@ -326,10 +335,10 @@ export default function DashboardClient({
       </button>
 
       {/* ── Top bento: Completion + Streak ──────────────────────── */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Completion bar — 2/3 */}
         <div
-          className="col-span-2 rounded-xl p-8 flex flex-col justify-between"
+          className="col-span-1 md:col-span-2 rounded-xl p-8 flex flex-col justify-between"
           style={{
             backgroundColor: "var(--surface-2)",
             border: "1px solid var(--border)",
@@ -382,9 +391,9 @@ export default function DashboardClient({
       </div>
 
       {/* ── Main grid: 8-col left + 4-col right ─────────────────── */}
-      <div className="grid grid-cols-12 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left column */}
-        <div className="col-span-8 space-y-12">
+        <div className="col-span-1 lg:col-span-8 space-y-12">
           {/* Urgent + Important */}
           <section>
             <div className="flex items-center gap-4 mb-6">
@@ -432,7 +441,7 @@ export default function DashboardClient({
         </div>
 
         {/* Right column */}
-        <div className="col-span-4 space-y-8">
+        <div className="col-span-1 lg:col-span-4 space-y-8">
           {/* Habit Tracker */}
           <section
             className="rounded-xl p-6"

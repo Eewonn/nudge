@@ -10,6 +10,7 @@ export interface TaskInput {
   category: Category;
   importance: Importance;
   due_at?: string | null;
+  recurrence_rule?: string | null;
 }
 
 export async function getTasks(): Promise<Task[]> {
@@ -62,6 +63,15 @@ export async function deleteTask(id: string): Promise<void> {
 
 export async function toggleTask(id: string, isCompleted: boolean): Promise<void> {
   const supabase = await createClient();
+
+  // Fetch the task first so we can check recurrence_rule
+  const { data: task, error: fetchError } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw new Error(fetchError.message);
+
   const { error } = await supabase
     .from("tasks")
     .update({
@@ -70,6 +80,34 @@ export async function toggleTask(id: string, isCompleted: boolean): Promise<void
     })
     .eq("id", id);
   if (error) throw new Error(error.message);
+
+  // Regenerate recurring task when completing
+  if (isCompleted && task.recurrence_rule) {
+    const base = task.due_at ? new Date(task.due_at) : new Date();
+    const next = new Date(base);
+    if (task.recurrence_rule === "daily") {
+      next.setDate(next.getDate() + 1);
+    } else if (task.recurrence_rule === "weekly") {
+      next.setDate(next.getDate() + 7);
+    } else if (task.recurrence_rule === "monthly") {
+      next.setMonth(next.getMonth() + 1);
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("tasks").insert({
+        user_id: user.id,
+        title: task.title,
+        notes: task.notes,
+        category: task.category,
+        importance: task.importance,
+        recurrence_rule: task.recurrence_rule,
+        due_at: next.toISOString(),
+        is_completed: false,
+      });
+    }
+  }
+
   revalidatePath("/tasks");
   revalidatePath("/dashboard");
 }

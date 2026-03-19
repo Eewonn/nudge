@@ -46,6 +46,7 @@ export default function CapturePage() {
   const [category, setCategory]     = useState<Category>("personal");
   const [importance, setImportance] = useState<Importance>("medium");
   const [dueAt, setDueAt]           = useState("");
+  const [recurrence, setRecurrence] = useState<string>("");
   const [error, setError]           = useState<string | null>(null);
   const [pending, startTransition]  = useTransition();
 
@@ -60,6 +61,7 @@ export default function CapturePage() {
           category,
           importance,
           due_at: dueAt ? new Date(dueAt).toISOString() : null,
+          recurrence_rule: recurrence || null,
         });
         router.push("/dashboard");
       } catch (err) {
@@ -157,6 +159,35 @@ export default function CapturePage() {
                     className="flex-1 bg-transparent outline-none text-sm font-semibold"
                     style={{ color: dueAt ? "var(--text)" : "var(--text-3)" }}
                   />
+                </div>
+              </div>
+
+              {/* Recurrence */}
+              <div>
+                <label
+                  className="block text-[10px] font-bold uppercase tracking-widest mb-4"
+                  style={{ color: "var(--text-3)" }}
+                >
+                  Recurrence
+                </label>
+                <div
+                  className="flex items-center gap-3 rounded-lg p-4 transition-colors"
+                  style={{ backgroundColor: "var(--surface)" }}
+                >
+                  <svg className="h-5 w-5 shrink-0" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <select
+                    value={recurrence}
+                    onChange={(e) => setRecurrence(e.target.value)}
+                    className="flex-1 bg-transparent outline-none text-sm font-semibold"
+                    style={{ color: recurrence ? "var(--text)" : "var(--text-3)" }}
+                  >
+                    <option value="">None</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                  </select>
                 </div>
               </div>
 

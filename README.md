@@ -54,6 +54,9 @@ Requires `.env.local` with:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 RESEND_API_KEY=
+CRON_SECRET=          # Bearer token checked by /api/cron/reminders
+NUDGE_TO_EMAIL=       # Address that receives reminder emails
+NUDGE_FROM_EMAIL=     # Verified Resend sender address
 ```
 
 ## Build status

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -34,19 +35,29 @@ export default function Sidebar() {
       className="w-64 h-screen sticky top-0 flex flex-col py-8 px-6 shrink-0"
     >
       {/* Logo */}
-      <div className="mb-8">
-        <h1
-          className="text-xl font-extrabold tracking-tight"
-          style={{ color: "var(--sb-accent)" }}
-        >
-          Nudge
-        </h1>
-        <p
-          className="text-[10px] uppercase tracking-widest font-bold mt-0.5"
-          style={{ color: "var(--sb-fg)", opacity: 0.6 }}
-        >
-          stay on track
-        </p>
+      <div className="mb-8 flex items-center gap-2">
+        <Image
+          src="/nudge-logo.png"
+          alt="Nudge"
+          width={40}
+          height={40}
+          unoptimized
+          className="shrink-0 rounded-lg"
+        />
+        <div>
+          <h1
+            className="text-lg font-extrabold tracking-tight leading-tight"
+            style={{ color: "var(--sb-accent)" }}
+          >
+            Nudge
+          </h1>
+          <p
+            className="text-[9px] uppercase tracking-widest font-bold"
+            style={{ color: "var(--sb-fg)", opacity: 0.55 }}
+          >
+            stay on track
+          </p>
+        </div>
       </div>
 
       {/* Nav */}

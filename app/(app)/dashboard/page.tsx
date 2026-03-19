@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 function greeting(name: string) {
   const h = new Date().getHours();
-  const time = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+  const time = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   return `${time}, ${name}.`;
 }
 

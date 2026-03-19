@@ -284,8 +284,12 @@ export default function DashboardClient({
   const last7 = getLast7Dates();
   const todayIdx = 6; // today is always the last in the 7-day window
 
-  const dateLabel = new Date().toLocaleDateString(undefined, {
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString(undefined, {
     weekday: "long", month: "long", day: "numeric",
+  });
+  const timeLabel = now.toLocaleTimeString(undefined, {
+    hour: "numeric", minute: "2-digit",
   });
 
   return (
@@ -293,7 +297,7 @@ export default function DashboardClient({
       {/* ── Header ──────────────────────────────────────────────── */}
       <header>
         <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: "var(--text-3)" }}>
-          {dateLabel}
+          {dateLabel} · {timeLabel}
         </p>
         <h1 className="text-5xl font-extrabold tracking-tight font-headline" style={{ color: "var(--text)" }}>
           {greetingText}

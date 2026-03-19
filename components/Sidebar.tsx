@@ -4,21 +4,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  Crosshair,
   CheckSquare,
-  Repeat2,
   BookOpen,
   Settings,
   LogOut,
-  Zap,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/capture",   label: "Capture",   icon: Crosshair },
   { href: "/tasks",     label: "Tasks",     icon: CheckSquare },
-  { href: "/habits",    label: "Habits",    icon: Repeat2 },
   { href: "/review",    label: "Review",    icon: BookOpen },
 ];
 
@@ -41,7 +36,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="mb-8">
         <h1
-          className="text-xl font-extrabold tracking-tight font-headline"
+          className="text-xl font-extrabold tracking-tight"
           style={{ color: "var(--sb-accent)" }}
         >
           Nudge
@@ -62,7 +57,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 active:translate-x-0.5"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200"
               style={{
                 color: active ? "var(--sb-fg-active)" : "var(--sb-fg)",
                 fontWeight: active ? 700 : 500,
@@ -84,25 +79,14 @@ export default function Sidebar() {
                   color: active ? "var(--sb-accent)" : "var(--sb-fg)",
                 }}
               />
-              <span className="font-headline">{label}</span>
+              <span>{label}</span>
             </Link>
           );
         })}
       </nav>
 
       {/* Bottom */}
-      <div className="space-y-3 pt-6" style={{ borderTop: "1px solid var(--sb-border)" }}>
-        {/* Quick Capture */}
-        <Link
-          href="/capture"
-          className="sovereign-gradient flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white shadow-lg transition-all duration-200 active:scale-95"
-          style={{ boxShadow: "0 4px 14px rgba(26, 64, 194, 0.25)" }}
-        >
-          <Zap className="h-4 w-4" />
-          Quick Capture
-        </Link>
-
-        {/* Settings */}
+      <div className="space-y-1 pt-6" style={{ borderTop: "1px solid var(--sb-border)" }}>
         <button
           className="flex w-full items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"
           style={{ color: "var(--sb-fg)" }}
@@ -113,7 +97,6 @@ export default function Sidebar() {
           <span>Settings</span>
         </button>
 
-        {/* Sign out */}
         <button
           onClick={handleSignOut}
           className="flex w-full items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"

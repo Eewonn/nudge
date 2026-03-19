@@ -7,7 +7,6 @@ import {
   computeLongestStreak,
   computeDailyCompletion,
   computeWeeklyRhythm,
-  computePerformanceScore,
   firstNameFromEmail,
 } from "@/lib/stats";
 import DashboardClient from "./DashboardClient";
@@ -37,7 +36,6 @@ export default async function DashboardPage() {
   const longestStreak = computeLongestStreak(tasks, logs);
   const completion    = computeDailyCompletion(tasks);
   const rhythm        = computeWeeklyRhythm(tasks);
-  const grade         = computePerformanceScore(streak, completion.pct);
 
   const activeHabits  = habits.filter((h) => h.is_active);
   const todayHabitsDone = activeHabits.filter((h) =>
@@ -59,10 +57,10 @@ export default async function DashboardPage() {
       completion={completion}
       streak={streak}
       longestStreak={longestStreak}
-      grade={grade}
       rhythm={rhythm}
       urgentTasks={urgentTasks}
       activeHabits={activeHabits}
+      allHabits={habits}
       habitLogs={logs.filter((l) => l.date === today)}
       allHabitLogs={logs}
       today={today}

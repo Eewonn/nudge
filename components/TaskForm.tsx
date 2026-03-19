@@ -14,16 +14,16 @@ const CATEGORIES: { value: Category; label: string }[] = [
   { value: "other",     label: "Other" },
 ];
 
-const IMPORTANCES: { value: Importance; label: string; color: string }[] = [
-  { value: "high",   label: "High",   color: "var(--imp-high)" },
-  { value: "medium", label: "Medium", color: "var(--imp-medium)" },
-  { value: "low",    label: "Low",    color: "var(--imp-low)" },
+const IMPORTANCES: {
+  value: Importance;
+  label: string;
+  description: string;
+  color: string;
+}[] = [
+  { value: "high",   label: "High Importance",   description: "Non-negotiable, high impact",   color: "var(--imp-high)" },
+  { value: "medium", label: "Medium Importance", description: "Strategic, high value",          color: "var(--imp-medium)" },
+  { value: "low",    label: "Low Importance",    description: "Routine, low friction",          color: "var(--imp-low)" },
 ];
-
-const FIELD_CLASS =
-  "w-full rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 text-sm text-text outline-none placeholder:text-text-3 focus:border-accent focus:ring-2 focus:ring-[var(--accent)]/15 transition-all";
-
-const LABEL_CLASS = "block text-xs font-medium text-text-2 uppercase tracking-wider mb-1.5";
 
 interface Props {
   task?: Task;
@@ -31,11 +31,11 @@ interface Props {
 }
 
 export default function TaskForm({ task, onClose }: Props) {
-  const [title, setTitle]       = useState(task?.title ?? "");
-  const [notes, setNotes]       = useState(task?.notes ?? "");
-  const [category, setCategory] = useState<Category>(task?.category ?? "personal");
+  const [title, setTitle]           = useState(task?.title ?? "");
+  const [notes, setNotes]           = useState(task?.notes ?? "");
+  const [category, setCategory]     = useState<Category>(task?.category ?? "personal");
   const [importance, setImportance] = useState<Importance>(task?.importance ?? "medium");
-  const [dueAt, setDueAt]       = useState(
+  const [dueAt, setDueAt]           = useState(
     task?.due_at ? new Date(task.due_at).toISOString().slice(0, 16) : ""
   );
   const [error, setError]           = useState<string | null>(null);
@@ -49,24 +49,21 @@ export default function TaskForm({ task, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  function buildInput(): TaskInput {
-    return {
-      title: title.trim(),
-      notes: notes.trim() || undefined,
-      category,
-      importance,
-      due_at: dueAt ? new Date(dueAt).toISOString() : null,
-    };
-  }
-
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) { setError("Title is required."); return; }
     setError(null);
     startTransition(async () => {
       try {
-        if (task) await updateTask(task.id, buildInput());
-        else await createTask(buildInput());
+        const input: TaskInput = {
+          title: title.trim(),
+          notes: notes.trim() || undefined,
+          category,
+          importance,
+          due_at: dueAt ? new Date(dueAt).toISOString() : null,
+        };
+        if (task) await updateTask(task.id, input);
+        else await createTask(input);
         onClose();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -74,119 +71,226 @@ export default function TaskForm({ task, onClose }: Props) {
     });
   }
 
+  const isEdit = !!task;
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-6"
+      style={{ backgroundColor: "rgba(15, 23, 48, 0.55)", backdropFilter: "blur(6px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-surface border border-border shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h2 className="text-sm font-semibold text-text">
-            {task ? "Edit task" : "New task"}
-          </h2>
+      <div
+        className="w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+        style={{
+          backgroundColor: "var(--bg)",
+          boxShadow: "0 24px 64px rgba(15, 23, 48, 0.18)",
+        }}
+      >
+        {/* Modal header */}
+        <div
+          className="flex items-center justify-between px-8 pt-7 pb-0"
+        >
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-3)" }}>
+              {isEdit ? "Edit Blueprint" : "New Blueprint"}
+            </p>
+          </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-text-3 hover:bg-surface-2 hover:text-text transition-colors"
+            className="rounded-lg p-1.5 transition-colors"
+            style={{ color: "var(--text-3)" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="px-8 pt-5 pb-8 space-y-7">
           {error && (
-            <p className="text-sm text-danger bg-danger-subtle border border-[var(--danger-border)] rounded-xl px-3.5 py-2.5">
+            <p
+              className="text-sm rounded-xl px-4 py-3"
+              style={{ color: "var(--danger)", backgroundColor: "var(--danger-subtle)", border: "1px solid var(--danger-border)" }}
+            >
               {error}
             </p>
           )}
 
+          {/* Title — underline input */}
           <div>
-            <label className={LABEL_CLASS}>Title</label>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
+              Objective Title
+            </label>
             <input
               ref={titleRef}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to be done?"
-              className={FIELD_CLASS}
+              placeholder="What requires your attention?"
+              className="w-full text-2xl font-bold bg-transparent outline-none pb-3 transition-all"
+              style={{
+                color: "var(--text)",
+                borderBottom: "2px solid var(--surface-3)",
+              }}
+              onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderBottomColor = "var(--accent)"; }}
+              onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderBottomColor = "var(--surface-3)"; }}
             />
           </div>
 
+          {/* Notes — compact optional */}
           <div>
-            <label className={LABEL_CLASS}>
-              Notes <span className="text-text-3 normal-case tracking-normal font-normal">— optional</span>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: "var(--text-3)" }}>
+              Notes <span className="normal-case font-normal tracking-normal opacity-60">— optional</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Any extra context…"
-              className={`${FIELD_CLASS} resize-none`}
+              placeholder="Any context or detail…"
+              className="w-full rounded-lg px-4 py-2.5 text-sm leading-relaxed resize-none outline-none transition-all"
+              style={{
+                backgroundColor: "var(--surface-2)",
+                color: "var(--text)",
+                border: "1px solid var(--border)",
+              }}
+              onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
+              onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Date + Category row */}
+          <div className="grid grid-cols-2 gap-6">
+            {/* Date */}
             <div>
-              <label className={LABEL_CLASS}>Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as Category)}
-                className={FIELD_CLASS}
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
+                Strategic Timeline
+              </label>
+              <div
+                className="flex items-center gap-2.5 rounded-lg px-4 py-2.5 transition-colors"
+                style={{ backgroundColor: "var(--surface-2)", border: "1px solid var(--border)" }}
               >
-                {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
+                <svg className="h-4 w-4 shrink-0" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+                <input
+                  type="datetime-local"
+                  value={dueAt}
+                  onChange={(e) => setDueAt(e.target.value)}
+                  className="flex-1 bg-transparent outline-none text-sm font-medium"
+                  style={{ color: dueAt ? "var(--text)" : "var(--text-3)" }}
+                />
+              </div>
             </div>
 
+            {/* Category */}
             <div>
-              <label className={LABEL_CLASS}>Importance</label>
-              <div className="flex gap-2">
-                {IMPORTANCES.map((imp) => (
+              <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
+                Primary Category
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {CATEGORIES.map((c) => (
                   <button
-                    key={imp.value}
+                    key={c.value}
                     type="button"
-                    onClick={() => setImportance(imp.value)}
-                    className="flex-1 rounded-xl border py-2 text-xs font-medium transition-all"
+                    onClick={() => setCategory(c.value)}
+                    className="px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200"
                     style={
-                      importance === imp.value
-                        ? { borderColor: imp.color, backgroundColor: imp.color + "18", color: imp.color }
-                        : { borderColor: "var(--border)", color: "var(--text-3)" }
+                      category === c.value
+                        ? { backgroundColor: "var(--accent)", color: "#fff", boxShadow: "0 2px 8px rgba(26,64,194,0.2)" }
+                        : { backgroundColor: "var(--surface-2)", color: "var(--text)" }
                     }
                   >
-                    {imp.label}
+                    {c.label}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
+          {/* Importance plinths */}
           <div>
-            <label className={LABEL_CLASS}>
-              Due date <span className="text-text-3 normal-case tracking-normal font-normal">— optional</span>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
+              Hierarchy of Importance
             </label>
-            <input
-              type="datetime-local"
-              value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
-              className={FIELD_CLASS}
-            />
+            <div className="space-y-2">
+              {IMPORTANCES.map((imp) => {
+                const selected = importance === imp.value;
+                return (
+                  <button
+                    key={imp.value}
+                    type="button"
+                    onClick={() => setImportance(imp.value)}
+                    className="relative w-full flex items-center justify-between px-5 py-3.5 rounded-lg overflow-hidden transition-all duration-200 hover:translate-x-0.5"
+                    style={{
+                      backgroundColor: selected
+                        ? imp.value === "high"   ? "rgba(163,0,14,0.06)"
+                        : imp.value === "medium" ? "rgba(88,96,125,0.08)"
+                        : "rgba(196,197,214,0.15)"
+                        : "var(--surface-2)",
+                      border: `1px solid ${selected ? imp.color : "var(--border)"}`,
+                    }}
+                  >
+                    {/* Left strip */}
+                    <div
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg"
+                      style={{ backgroundColor: imp.color }}
+                    />
+                    <div className="ml-3 text-left">
+                      <span className="font-bold text-sm block" style={{ color: "var(--text)" }}>
+                        {imp.label}
+                      </span>
+                      <span className="text-xs" style={{ color: "var(--text-3)" }}>
+                        {imp.description}
+                      </span>
+                    </div>
+                    {/* Radio dot */}
+                    <div
+                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200"
+                      style={{
+                        borderColor: selected ? imp.color : "var(--border-strong)",
+                        backgroundColor: selected ? imp.color : "transparent",
+                      }}
+                    >
+                      {selected && (
+                        <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-1">
+          {/* Actions */}
+          <div className="flex items-center justify-between pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-text-2 hover:bg-surface-2 hover:text-text transition-colors"
+              className="rounded-xl border px-5 py-2.5 text-sm font-medium transition-colors"
+              style={{ borderColor: "var(--border-strong)", color: "var(--text-2)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
             >
               Cancel
             </button>
+
             <button
               type="submit"
               disabled={pending}
-              className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50 transition-colors"
+              className="sovereign-gradient flex items-center gap-2.5 rounded-xl px-7 py-3 font-extrabold text-base text-white transition-all duration-300 active:scale-95 disabled:opacity-50"
+              style={{ boxShadow: "0px 8px 20px rgba(26,64,194,0.3)" }}
+              onMouseEnter={(e) => {
+                if (!pending) (e.currentTarget as HTMLElement).style.boxShadow = "0px 12px 28px rgba(26,64,194,0.4)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.boxShadow = "0px 8px 20px rgba(26,64,194,0.3)";
+              }}
             >
-              {pending ? "Saving…" : task ? "Save changes" : "Create task"}
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 3l14 9-14 9V3z" />
+              </svg>
+              {pending ? "Saving…" : isEdit ? "Save Changes" : "Commit to Ledger"}
             </button>
           </div>
         </form>

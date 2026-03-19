@@ -2,34 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import { clsx } from "clsx";
 import { toggleTask, deleteTask } from "@/app/actions/tasks";
 import type { Task, TaskGroup } from "@/types";
 import TaskForm from "./TaskForm";
-
-const BADGE: Record<TaskGroup, { label: string; style: React.CSSProperties }> = {
-  overdue: {
-    label: "Overdue",
-    style: { background: "var(--danger-subtle)", color: "var(--danger)" },
-  },
-  today: {
-    label: "Today",
-    style: { background: "var(--warning-subtle)", color: "var(--warning)" },
-  },
-  upcoming: {
-    label: "Upcoming",
-    style: { background: "var(--surface-2)", color: "var(--text-2)" },
-  },
-  someday: {
-    label: "Someday",
-    style: { background: "var(--surface-2)", color: "var(--text-3)" },
-  },
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  work: "Work", personal: "Personal", academics: "Academics",
-  acm: "ACM", thesis: "Thesis", other: "Other",
-};
 
 interface Props {
   task: Task;
@@ -37,7 +12,7 @@ interface Props {
   showUrgencyBadge?: boolean;
 }
 
-export default function TaskItem({ task, urgency, showUrgencyBadge = false }: Props) {
+export default function TaskItem({ task, urgency }: Props) {
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -50,7 +25,17 @@ export default function TaskItem({ task, urgency, showUrgencyBadge = false }: Pr
     startTransition(() => deleteTask(task.id));
   }
 
-  const badge = BADGE[urgency];
+  const impColor =
+    task.importance === "high"   ? "var(--imp-high)" :
+    task.importance === "medium" ? "var(--imp-medium)" :
+                                   "var(--imp-low)";
+
+  const badgeLabel =
+    task.importance === "high" ? "High" :
+    task.importance === "medium" ? "Medium" : "Low";
+
+  const isOverdue = urgency === "overdue" && !task.is_completed;
+
   const dueLabel = task.due_at
     ? new Date(task.due_at).toLocaleString(undefined, {
         month: "short", day: "numeric",
@@ -58,97 +43,140 @@ export default function TaskItem({ task, urgency, showUrgencyBadge = false }: Pr
       })
     : null;
 
-  const impColor =
-    task.importance === "high"   ? "var(--imp-high)" :
-    task.importance === "medium" ? "var(--imp-medium)" :
-                                   "var(--imp-low)";
-
   return (
     <>
       <div
-        className={clsx(
-          "group relative flex items-start gap-3 rounded-xl border px-4 py-3.5 transition-colors",
-          task.is_completed
-            ? "border-border bg-surface opacity-50"
-            : urgency === "overdue"
-            ? "border-[var(--danger-border)] bg-danger-subtle/30"
-            : "border-border bg-surface hover:border-border-strong",
-          pending && "opacity-40 pointer-events-none"
-        )}
+        className="group relative flex items-center gap-0 rounded-xl overflow-hidden transition-all duration-300"
+        style={{
+          backgroundColor: task.is_completed ? "var(--surface-2)" : "var(--surface)",
+          border: `1px solid ${isOverdue ? "rgba(163,0,14,0.2)" : "var(--border)"}`,
+          boxShadow: task.is_completed ? "none" : "0 1px 4px rgba(15,23,48,0.04)",
+          opacity: pending ? 0.5 : 1,
+        }}
+        onMouseEnter={(e) => {
+          if (!task.is_completed) {
+            (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(15,23,48,0.07)";
+            (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.boxShadow = task.is_completed ? "none" : "0 1px 4px rgba(15,23,48,0.04)";
+          (e.currentTarget as HTMLElement).style.transform = "";
+        }}
       >
-        {/* Importance strip */}
+        {/* Left importance strip */}
         {!task.is_completed && (
-          <div
-            className="absolute left-0 inset-y-2 w-[3px] rounded-full"
-            style={{ backgroundColor: impColor, opacity: task.importance === "low" ? 0.4 : 1 }}
-          />
+          <div className="self-stretch w-1 shrink-0" style={{ backgroundColor: impColor }} />
         )}
+        {task.is_completed && <div className="self-stretch w-1 shrink-0" style={{ backgroundColor: "var(--border)" }} />}
 
-        {/* Checkbox */}
-        <input
-          type="checkbox"
-          checked={task.is_completed}
-          onChange={handleToggle}
-          className="mt-0.5 h-4 w-4 shrink-0 rounded border-border cursor-pointer"
-        />
+        {/* Circle toggle */}
+        <button
+          onClick={handleToggle}
+          disabled={pending}
+          className="ml-5 mr-4 shrink-0 flex items-center justify-center rounded-full border-2 transition-all duration-200"
+          style={{
+            width: "22px",
+            height: "22px",
+            borderColor: task.is_completed ? "var(--accent)" : "var(--border-strong)",
+            backgroundColor: task.is_completed ? "var(--accent)" : "transparent",
+          }}
+          onMouseEnter={(e) => {
+            if (!task.is_completed) {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+              (e.currentTarget as HTMLElement).style.backgroundColor = "var(--accent-subtle)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!task.is_completed) {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)";
+              (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+            }
+          }}
+        >
+          {task.is_completed && (
+            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+            </svg>
+          )}
+        </button>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={clsx(
-                "text-sm font-medium leading-snug",
-                task.is_completed ? "line-through text-text-3" : "text-text"
-              )}
-            >
-              {task.title}
-            </span>
-
-            {showUrgencyBadge && (
+        <div className="flex-1 min-w-0 py-4 pr-4">
+          {!task.is_completed && (
+            <div className="flex items-center gap-2 mb-1">
               <span
-                className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
-                style={badge.style}
+                className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm text-white"
+                style={{ backgroundColor: impColor }}
               >
-                {badge.label}
+                {badgeLabel}
               </span>
-            )}
-          </div>
-
-          <div className="mt-1 flex items-center gap-1.5 text-[11.5px] text-text-3 flex-wrap">
-            <span>{CATEGORY_LABEL[task.category]}</span>
-            {dueLabel && (
-              <>
-                <span>·</span>
-                <span
-                  className={clsx(urgency === "overdue" && !task.is_completed && "font-medium")}
-                  style={urgency === "overdue" && !task.is_completed ? { color: "var(--danger)" } : {}}
-                >
-                  {dueLabel}
+              {task.category && (
+                <span className="text-xs font-semibold opacity-50" style={{ color: "var(--text-2)" }}>
+                  {task.category}
                 </span>
-              </>
-            )}
-            {task.notes && (
-              <>
-                <span>·</span>
-                <span className="truncate max-w-[180px]">{task.notes}</span>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+
+          <h4
+            className="font-bold leading-snug"
+            style={{
+              color: task.is_completed ? "var(--text-3)" : "var(--text)",
+              fontSize: task.is_completed ? "0.875rem" : "1rem",
+              textDecoration: task.is_completed ? "line-through" : "none",
+            }}
+          >
+            {task.title}
+          </h4>
+
+          {!task.is_completed && (dueLabel || task.notes) && (
+            <div className="flex items-center gap-3 mt-1.5">
+              {dueLabel && (
+                <span
+                  className="flex items-center gap-1.5 text-xs font-medium"
+                  style={{ color: isOverdue ? "var(--imp-high)" : "var(--text-3)" }}
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                  </svg>
+                  {isOverdue && <span className="font-bold">Overdue · </span>}{dueLabel}
+                </span>
+              )}
+              {task.notes && (
+                <span className="text-xs truncate max-w-[200px]" style={{ color: "var(--text-3)" }}>
+                  {task.notes}
+                </span>
+              )}
+            </div>
+          )}
+
+          {task.is_completed && task.completed_at && (
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-3)" }}>
+              Completed {new Date(task.completed_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+            </p>
+          )}
         </div>
 
         {/* Hover actions */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-4">
           <button
             onClick={() => setEditing(true)}
-            className="rounded-lg p-1.5 text-text-3 hover:bg-surface-2 hover:text-text transition-colors"
+            className="rounded-lg p-1.5 transition-colors"
+            style={{ color: "var(--text-3)" }}
             title="Edit"
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)"; (e.currentTarget as HTMLElement).style.color = "var(--text)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
           >
             <Pencil className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={handleDelete}
-            className="rounded-lg p-1.5 text-text-3 hover:bg-danger-subtle hover:text-danger transition-colors"
+            className="rounded-lg p-1.5 transition-colors"
+            style={{ color: "var(--text-3)" }}
             title="Delete"
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--danger-subtle)"; (e.currentTarget as HTMLElement).style.color = "var(--imp-high)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

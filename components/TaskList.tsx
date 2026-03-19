@@ -27,21 +27,27 @@ export default function TaskList({ grouped, completedTasks }: Props) {
   const totalActive = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text">Tasks</h1>
-          <p className="text-xs text-text-3 mt-0.5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: "var(--text-3)" }}>
+            Task Ledger
+          </p>
+          <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>Blueprints</h1>
+          <p className="text-xs mt-1.5" style={{ color: "var(--text-3)" }}>
             {totalActive} active · {completedTasks.length} completed
           </p>
         </div>
         <button
           onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-accent-hover transition-colors"
+          className="sovereign-gradient flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold text-white transition-all duration-200 active:scale-95"
+          style={{ boxShadow: "0 4px 14px rgba(26,64,194,0.3)" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 20px rgba(26,64,194,0.4)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 14px rgba(26,64,194,0.3)"; }}
         >
-          <Plus className="h-3.5 w-3.5" />
-          New task
+          <Plus className="h-4 w-4" />
+          New Blueprint
         </button>
       </div>
 
@@ -50,27 +56,35 @@ export default function TaskList({ grouped, completedTasks }: Props) {
         const tasks = grouped[key];
         return (
           <section key={key}>
-            <div className="flex items-center gap-2 mb-2.5">
+            {/* Section header with divider */}
+            <div className="flex items-center gap-3 mb-4">
               <h2
-                className="text-[11px] font-semibold uppercase tracking-widest"
+                className="text-[10px] font-bold uppercase tracking-[0.18em] shrink-0"
                 style={tasks.length > 0 && accentStyle ? accentStyle : { color: "var(--text-3)" }}
               >
                 {label}
               </h2>
               {tasks.length > 0 && (
                 <span
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
-                  style={{ background: "var(--surface-2)", color: accentStyle?.color ?? "var(--text-3)" }}
+                  className="rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums shrink-0"
+                  style={{
+                    backgroundColor: accentStyle?.color
+                      ? `${(accentStyle.color as string).replace("var(--", "").replace(")", "")}` === "danger"
+                        ? "var(--danger-subtle)" : "var(--surface-2)"
+                      : "var(--surface-2)",
+                    color: accentStyle?.color ?? "var(--text-3)",
+                  }}
                 >
                   {tasks.length}
                 </span>
               )}
+              <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
             </div>
 
             {tasks.length === 0 ? (
-              <p className="text-xs text-text-3 italic pl-0.5">{emptyText}</p>
+              <p className="text-xs italic pl-0.5" style={{ color: "var(--text-3)" }}>{emptyText}</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {tasks.map((task) => (
                   <TaskItem
                     key={task.id}
@@ -87,18 +101,24 @@ export default function TaskList({ grouped, completedTasks }: Props) {
       {/* Completed */}
       {completedTasks.length > 0 && (
         <section>
-          <button
-            onClick={() => setShowCompleted((v) => !v)}
-            className="flex items-center gap-1.5 mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-text-3 hover:text-text-2 transition-colors"
-          >
-            <ChevronDown
-              className={clsx("h-3.5 w-3.5 transition-transform", !showCompleted && "-rotate-90")}
-            />
-            Completed ({completedTasks.length})
-          </button>
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => setShowCompleted((v) => !v)}
+              className="flex items-center gap-2 shrink-0 transition-colors"
+              style={{ color: "var(--text-3)" }}
+            >
+              <ChevronDown
+                className={clsx("h-3.5 w-3.5 transition-transform duration-200", !showCompleted && "-rotate-90")}
+              />
+              <span className="text-[10px] font-bold uppercase tracking-[0.18em]">
+                Completed ({completedTasks.length})
+              </span>
+            </button>
+            <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
+          </div>
 
           {showCompleted && (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {completedTasks.map((task) => (
                 <TaskItem
                   key={task.id}

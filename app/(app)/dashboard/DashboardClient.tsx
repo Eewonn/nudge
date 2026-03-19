@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
-import { toggleHabitLog } from "@/app/actions/habits";
+import { useState, useTransition } from "react";
+import { Zap, Plus, Pencil, Archive } from "lucide-react";
+import { toggleHabitLog, archiveHabit } from "@/app/actions/habits";
+import { useRouter } from "next/navigation";
+import TaskForm from "@/components/TaskForm";
+import HabitForm from "@/components/HabitForm";
 import type { Task, Habit, HabitLog } from "@/types";
-import type { DailyCompletion, DayRhythm, Grade } from "@/lib/stats";
+import type { DailyCompletion, DayRhythm } from "@/lib/stats";
 
 // ── Weekly Rhythm bar chart ──────────────────────────────────────────────────
 
@@ -223,17 +227,6 @@ function HabitGrid({
   );
 }
 
-// ── Grade label ───────────────────────────────────────────────────────────────
-
-const GRADE_LABEL: Record<Grade, string> = {
-  "A+": "Excellent",
-  "A":  "Strong",
-  "B+": "Good",
-  "B":  "Solid",
-  "C":  "Fair",
-  "D":  "Needs work",
-};
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -241,10 +234,10 @@ interface Props {
   completion: DailyCompletion;
   streak: number;
   longestStreak: number;
-  grade: Grade;
   rhythm: DayRhythm[];
   urgentTasks: Task[];
   activeHabits: Habit[];
+  allHabits: Habit[];
   habitLogs: HabitLog[];
   allHabitLogs: HabitLog[];
   today: string;
@@ -264,16 +257,20 @@ export default function DashboardClient({
   completion,
   streak,
   longestStreak,
-  grade,
   rhythm,
   urgentTasks,
   activeHabits,
+  allHabits,
   habitLogs,
   allHabitLogs,
   today,
   todayHabitsDone,
 }: Props) {
+  const [creating, setCreating] = useState(false);
+  const [habitFormOpen, setHabitFormOpen] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [, startTransition] = useTransition();
+  const router = useRouter();
   const todayDoneSet = new Set(habitLogs.map((l) => l.habit_id));
   const last7 = getLast7Dates();
   const todayIdx = 6; // today is always the last in the 7-day window
@@ -293,6 +290,40 @@ export default function DashboardClient({
           {greetingText}
         </h1>
       </header>
+
+      {/* ── Quick Capture ───────────────────────────────────────── */}
+      <button
+        onClick={() => setCreating(true)}
+        className="w-full flex items-center gap-4 rounded-xl px-6 py-4 text-left transition-all duration-200 group"
+        style={{
+          backgroundColor: "var(--surface)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 1px 4px rgba(15,23,48,0.04)",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(26,64,194,0.08)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 4px rgba(15,23,48,0.04)";
+        }}
+      >
+        <div
+          className="sovereign-gradient flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
+          style={{ boxShadow: "0 2px 8px rgba(26,64,194,0.25)" }}
+        >
+          <Zap className="h-4 w-4 text-white" />
+        </div>
+        <span className="flex-1 text-sm font-medium" style={{ color: "var(--text-3)" }}>
+          What requires your attention?
+        </span>
+        <span
+          className="sovereign-gradient rounded-lg px-3 py-1.5 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-all duration-200"
+        >
+          Capture
+        </span>
+      </button>
 
       {/* ── Top bento: Completion + Streak ──────────────────────── */}
       <div className="grid grid-cols-3 gap-6">
@@ -402,103 +433,176 @@ export default function DashboardClient({
 
         {/* Right column */}
         <div className="col-span-4 space-y-8">
-          {/* Daily Habits */}
-          {activeHabits.length > 0 && (
-            <section
-              className="rounded-xl p-8"
-              style={{
-                backgroundColor: "var(--surface-4)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-bold font-headline" style={{ color: "var(--text)" }}>
-                  Daily Habits
-                </h2>
-                <span className="text-[10px] font-bold uppercase opacity-60" style={{ color: "var(--text-2)" }}>
-                  Last 7 Days
-                </span>
-              </div>
-              <div className="space-y-6">
-                {activeHabits.map((habit) => {
-                  const weekDots = last7.map((date) =>
-                    allHabitLogs.some((l) => l.habit_id === habit.id && l.date === date)
-                  );
-                  return (
-                    <HabitGrid
-                      key={habit.id}
-                      habit={habit}
-                      todayDone={todayDoneSet.has(habit.id)}
-                      weekDots={weekDots}
-                      todayIdx={todayIdx}
-                      onToggle={() => {
-                        startTransition(() =>
-                          toggleHabitLog(habit.id, today, !todayDoneSet.has(habit.id))
-                        );
-                      }}
-                    />
-                  );
-                })}
-              </div>
-              <Link
-                href="/habits"
-                className="mt-6 block text-[10px] font-bold uppercase tracking-wider transition-colors"
-                style={{ color: "var(--accent)" }}
-              >
-                Manage Habits →
-              </Link>
-            </section>
-          )}
-
-          {/* Performance */}
+          {/* Habit Tracker */}
           <section
-            className="rounded-xl p-8"
+            className="rounded-xl p-6"
             style={{
               backgroundColor: "var(--surface)",
               border: "1px solid var(--border)",
               boxShadow: "0 1px 4px rgba(15,23,48,0.04)",
             }}
           >
-            <h3
-              className="text-xs font-bold uppercase tracking-widest mb-8"
-              style={{ color: "var(--text-2)" }}
-            >
-              Performance
-            </h3>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs" style={{ color: "var(--text-3)" }}>Today&apos;s Score</span>
-                  <div className="text-2xl font-black font-headline" style={{ color: "var(--accent)" }}>
-                    {grade}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs" style={{ color: "var(--text-3)" }}>Rating</span>
-                  <div className="text-lg font-bold" style={{ color: "var(--text)" }}>
-                    {GRADE_LABEL[grade]}
-                  </div>
+            {/* Section header */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-0.5" style={{ color: "var(--text-3)" }}>
+                  Habit Tracker
+                </p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold font-headline" style={{ color: "var(--text)" }}>
+                    Daily Habits
+                  </h2>
+                  {activeHabits.length > 0 && (
+                    <span
+                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                      style={{
+                        backgroundColor: todayHabitsDone === activeHabits.length ? "var(--success-subtle)" : "var(--surface-2)",
+                        color: todayHabitsDone === activeHabits.length ? "var(--success)" : "var(--text-3)",
+                      }}
+                    >
+                      {todayHabitsDone}/{activeHabits.length}
+                    </span>
+                  )}
                 </div>
               </div>
-
-              <div
-                className="flex items-center justify-between pt-5"
-                style={{ borderTop: "1px solid var(--border)" }}
+              <button
+                onClick={() => { setEditingHabit(null); setHabitFormOpen(true); }}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200"
+                style={{
+                  backgroundColor: "var(--surface-2)",
+                  color: "var(--text-2)",
+                  border: "1px solid var(--border)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "var(--accent-subtle)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--accent)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-2)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+                }}
               >
-                <div>
-                  <span className="text-xs" style={{ color: "var(--text-3)" }}>Habits Today</span>
-                  <div className="text-2xl font-black font-headline" style={{ color: "var(--text)" }}>
-                    {todayHabitsDone}/{activeHabits.length}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs" style={{ color: "var(--text-3)" }}>Completion</span>
-                  <div className="text-2xl font-black font-headline" style={{ color: "var(--text)" }}>
-                    {completion.pct}%
-                  </div>
-                </div>
-              </div>
+                <Plus className="h-3 w-3" />
+                Add Habit
+              </button>
             </div>
+
+            {/* Habit list */}
+            {activeHabits.length === 0 ? (
+              <div
+                className="rounded-xl border-2 border-dashed p-8 text-center"
+                style={{ borderColor: "var(--border)" }}
+              >
+                <p className="text-sm mb-3" style={{ color: "var(--text-3)" }}>
+                  No habits tracked yet.
+                </p>
+                <button
+                  onClick={() => { setEditingHabit(null); setHabitFormOpen(true); }}
+                  className="text-xs font-bold transition-colors"
+                  style={{ color: "var(--accent)" }}
+                >
+                  + Add your first habit
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {activeHabits.map((habit) => {
+                  const weekDots = last7.map((date) =>
+                    allHabitLogs.some((l) => l.habit_id === habit.id && l.date === date)
+                  );
+                  const doneCount = weekDots.filter(Boolean).length;
+                  const todayDone = todayDoneSet.has(habit.id);
+                  return (
+                    <div
+                      key={habit.id}
+                      className="group/habit rounded-lg p-3 transition-all duration-200"
+                      style={{ backgroundColor: "var(--surface-2)" }}
+                    >
+                      {/* Habit header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-bold truncate" style={{ color: "var(--text)" }}>
+                            {habit.name}
+                          </span>
+                          <span className="text-[10px] font-bold shrink-0" style={{ color: "var(--accent)" }}>
+                            {doneCount}/7
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover/habit:opacity-100 transition-opacity shrink-0 ml-2">
+                          <button
+                            onClick={() => { setEditingHabit(habit); setHabitFormOpen(true); }}
+                            className="rounded p-1 transition-colors"
+                            style={{ color: "var(--text-3)" }}
+                            title="Edit"
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text)"; (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-3)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => startTransition(async () => { await archiveHabit(habit.id, false); router.refresh(); })}
+                            className="rounded p-1 transition-colors"
+                            style={{ color: "var(--text-3)" }}
+                            title="Archive"
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--warning)"; (e.currentTarget as HTMLElement).style.backgroundColor = "var(--warning-subtle)"; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+                          >
+                            <Archive className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 7-day grid */}
+                      <div className="grid grid-cols-7 gap-1">
+                        {weekDots.map((done, i) => {
+                          const isToday = i === todayIdx;
+                          return isToday ? (
+                            <button
+                              key={i}
+                              onClick={() => startTransition(() => toggleHabitLog(habit.id, today, !todayDone))}
+                              title="Toggle today"
+                              className="aspect-square rounded-sm flex items-center justify-center transition-all duration-200 hover:opacity-80"
+                              style={{
+                                backgroundColor: done ? "var(--accent)" : "var(--surface-3)",
+                                outline: "2px solid var(--accent)",
+                                outlineOffset: "2px",
+                              }}
+                            >
+                              {done && (
+                                <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                                </svg>
+                              )}
+                            </button>
+                          ) : (
+                            <div
+                              key={i}
+                              className="aspect-square rounded-sm flex items-center justify-center"
+                              style={{ backgroundColor: done ? "var(--accent)" : "rgba(196,197,214,0.25)" }}
+                            >
+                              {done && (
+                                <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 12 12" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2 6l3 3 5-5" />
+                                </svg>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Archived habits count */}
+            {allHabits.filter((h) => !h.is_active).length > 0 && (
+              <p className="mt-4 text-[10px]" style={{ color: "var(--text-3)" }}>
+                {allHabits.filter((h) => !h.is_active).length} archived habit{allHabits.filter((h) => !h.is_active).length !== 1 ? "s" : ""}
+              </p>
+            )}
           </section>
 
           {/* Review CTA */}
@@ -524,6 +628,14 @@ export default function DashboardClient({
           </Link>
         </div>
       </div>
+
+      {creating && <TaskForm onClose={() => setCreating(false)} />}
+      {habitFormOpen && (
+        <HabitForm
+          habit={editingHabit ?? undefined}
+          onClose={() => { setHabitFormOpen(false); setEditingHabit(null); router.refresh(); }}
+        />
+      )}
     </div>
   );
 }

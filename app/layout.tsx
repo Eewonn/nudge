@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
+import { DM_Sans } from "next/font/google";
+import { ThemeProvider, ThemeScript } from "@/components/ThemeProvider";
 import "./globals.css";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  weight: ["300", "400", "500", "600"],
+});
 
 export const metadata: Metadata = {
   title: "Nudge",
@@ -11,8 +16,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} h-full antialiased`}>
-      <body className="h-full bg-gray-50 font-sans">{children}</body>
+    <html lang="en" className={`${dmSans.variable} h-full`} suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
+      <body className="h-full bg-bg text-text">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

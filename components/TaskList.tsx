@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Plus, Pencil, Trash2, Archive, X } from "lucide-react";
 import { toggleTask, deleteTask } from "@/app/actions/tasks";
 import type { Task, GroupedTasks, TaskGroup } from "@/types";
 import { getTaskUrgency } from "@/lib/priority";
 import TaskForm from "./TaskForm";
+import ConfirmDialog from "./ConfirmDialog";
 
 // ── Column config ─────────────────────────────────────────────────────────────
 
@@ -25,6 +26,7 @@ const COLUMNS: {
 
 function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const impColor =
@@ -49,7 +51,11 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
   }
 
   function handleDelete() {
-    if (!confirm("Delete this task?")) return;
+    setConfirmDelete(true);
+  }
+
+  function confirmDeletion() {
+    setConfirmDelete(false);
     startTransition(() => deleteTask(task.id));
   }
 
@@ -216,6 +222,15 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
       </div>
 
       {editing && <TaskForm task={task} onClose={() => setEditing(false)} />}
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete task"
+          message={`"${task.title}" will be permanently deleted.`}
+          confirmLabel="Delete"
+          onConfirm={confirmDeletion}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </>
   );
 }
@@ -442,6 +457,19 @@ function ArchiveCard({ task }: { task: Task }) {
 export default function TaskList({ grouped, completedTasks }: Props) {
   const [creating, setCreating] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) return;
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setCreating(true);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const totalActive   = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
   const overdueCount  = grouped.overdue.length;

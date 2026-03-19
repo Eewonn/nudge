@@ -1,14 +1,25 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 export async function sendEmail(subject: string, html: string): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from   = process.env.NUDGE_FROM_EMAIL ?? "nudge@yourdomain.com";
-  const to     = process.env.NUDGE_TO_EMAIL;
+  const user = process.env.GMAIL_USER;
+  const pass = process.env.GMAIL_APP_PASSWORD;
+  const to   = process.env.NUDGE_TO_EMAIL;
 
-  if (!apiKey) throw new Error("RESEND_API_KEY is not set");
-  if (!to)     throw new Error("NUDGE_TO_EMAIL is not set");
+  if (!user) throw new Error("GMAIL_USER is not set");
+  if (!pass) throw new Error("GMAIL_APP_PASSWORD is not set");
+  if (!to)   throw new Error("NUDGE_TO_EMAIL is not set");
 
-  const resend = new Resend(apiKey);
-  const { error } = await resend.emails.send({ from, to, subject, html });
-  if (error) throw new Error(`Resend error: ${error.message}`);
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+  });
+
+  const info = await transporter.sendMail({
+    from: `"Nudge" <${user}>`,
+    to,
+    subject,
+    html,
+  });
+
+  if (!info.messageId) throw new Error("Email failed to send");
 }

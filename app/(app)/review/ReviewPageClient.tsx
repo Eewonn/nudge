@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { upsertReview } from "@/app/actions/review";
+import { useState, useTransition } from "react";
+import { ChevronLeft, ChevronRight, Mic, MicOff } from "lucide-react";
+import { upsertReview, getReviewByDate } from "@/app/actions/review";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
 import type { DailyReview, Task } from "@/types";
 import type { DailyCompletion, Grade } from "@/lib/stats";
 
@@ -83,11 +85,43 @@ export default function ReviewPageClient({
   streak,
   grade,
 }: Props) {
-  const [saved, setSaved] = useState<DailyReview | null>(existing);
-  const [summary, setSummary] = useState(existing?.summary ?? "");
-  const [top3, setTop3] = useState<string[]>(existing?.top_3_for_tomorrow ?? []);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [saved, setSaved]       = useState<DailyReview | null>(existing);
+  const [summary, setSummary]   = useState(existing?.summary ?? "");
+  const [top3, setTop3]         = useState<string[]>(existing?.top_3_for_tomorrow ?? []);
+  const [error, setError]       = useState<string | null>(null);
+  const [pending, setPending]   = useState(false);
+
+  // Date navigation
+  const [viewDate, setViewDate]           = useState(today);
+  const [viewEntry, setViewEntry]         = useState<DailyReview | null>(null);
+  const [navPending, startNavTransition]  = useTransition();
+  const isToday = viewDate === today;
+
+  // Speech-to-text
+  const speech = useSpeechInput();
+
+  function handleMic() {
+    if (speech.listening) { speech.stop(); return; }
+    speech.start((text) => {
+      setSummary((prev) => prev ? prev + " " + text : text);
+    });
+  }
+
+  function shiftDay(delta: number) {
+    const d = new Date(viewDate + "T12:00:00");
+    d.setDate(d.getDate() + delta);
+    const next = d.toISOString().slice(0, 10);
+    if (next > today) return; // can't go into future
+    setViewDate(next);
+    if (next === today) {
+      setViewEntry(null);
+    } else {
+      startNavTransition(async () => {
+        const entry = await getReviewByDate(next);
+        setViewEntry(entry);
+      });
+    }
+  }
 
   function toggleTask(title: string) {
     setTop3((prev) =>
@@ -116,39 +150,109 @@ export default function ReviewPageClient({
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="space-y-3">
-        <h1 className="font-headline text-5xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
-          {formatDate(today)}
-        </h1>
-        <p className="text-xl font-medium" style={{ color: "var(--text-2)" }}>
-          {completion.pct === 100 ? `Nice work today, ${firstName}.` : `Hey, ${firstName}.`}
-        </p>
-        {/* Inline stat pills */}
-        <div className="flex items-center gap-2 flex-wrap pt-1">
-          <span
-            className="px-3 py-1 rounded-full text-xs font-semibold"
-            style={{ backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }}
-          >
-            {completion.done} of {completion.total} tasks done
-          </span>
-          {streak > 0 && (
-            <span
-              className="px-3 py-1 rounded-full text-xs font-semibold"
-              style={{ backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }}
+        <div className="flex items-center gap-4">
+          <h1 className="font-headline text-5xl font-extrabold tracking-tight flex-1" style={{ color: "var(--text)" }}>
+            {formatDate(viewDate)}
+          </h1>
+          {/* Date navigator */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => shiftDay(-1)}
+              disabled={navPending}
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40"
+              style={{ color: "var(--text-3)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+              title="Previous day"
             >
-              Streak {streak}d
-            </span>
-          )}
-          <span
-            className="px-3 py-1 rounded-full text-xs font-semibold"
-            style={{ backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }}
-          >
-            Grade {grade} · {GRADE_LABEL[grade]}
-          </span>
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {!isToday && (
+              <button
+                onClick={() => shiftDay(1)}
+                disabled={navPending}
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors disabled:opacity-40"
+                style={{ color: "var(--text-3)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; }}
+                title="Next day"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+            {!isToday && (
+              <button
+                onClick={() => { setViewDate(today); setViewEntry(null); }}
+                className="ml-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors"
+                style={{ color: "var(--accent)", backgroundColor: "var(--accent-subtle)" }}
+              >
+                Today
+              </button>
+            )}
+          </div>
         </div>
+        <p className="text-xl font-medium" style={{ color: "var(--text-2)" }}>
+          {isToday
+            ? (completion.pct === 100 ? `Nice work today, ${firstName}.` : `Hey, ${firstName}.`)
+            : "Past journal entry"}
+        </p>
+        {/* Inline stat pills — only for today */}
+        {isToday && (
+          <div className="flex items-center gap-2 flex-wrap pt-1">
+            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
+              {completion.done} of {completion.total} tasks done
+            </span>
+            {streak > 0 && (
+              <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
+                Streak {streak}d
+              </span>
+            )}
+            <span className="px-3 py-1 rounded-full text-xs font-semibold" style={{ backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }}>
+              Grade {grade} · {GRADE_LABEL[grade]}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* ── Main 2-col form ─────────────────────────────────────────── */}
-      <form onSubmit={handleSeal}>
+      {/* ── Past day read-only view ──────────────────────────────────── */}
+      {!isToday && (
+        <div
+          className="rounded-2xl p-8 space-y-6"
+          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", opacity: navPending ? 0.5 : 1 }}
+        >
+          {viewEntry ? (
+            <>
+              {viewEntry.summary && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-3)" }}>Log</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-2)" }}>{viewEntry.summary}</p>
+                </div>
+              )}
+              {viewEntry.top_3_for_tomorrow.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-3)" }}>Top 3 planned</p>
+                  <ol className="space-y-1.5">
+                    {viewEntry.top_3_for_tomorrow.map((t, i) => (
+                      <li key={i} className="flex items-center gap-2.5 text-sm" style={{ color: "var(--text)" }}>
+                        <span className="h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0" style={{ backgroundColor: "var(--accent-subtle)", color: "var(--accent)" }}>{i + 1}</span>
+                        {t}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+              {!viewEntry.summary && viewEntry.top_3_for_tomorrow.length === 0 && (
+                <p className="text-sm italic text-center py-4" style={{ color: "var(--text-3)" }}>Nothing logged for this day.</p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm italic text-center py-4" style={{ color: "var(--text-3)" }}>No journal entry for this day.</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Main 2-col form (today only) ─────────────────────────────── */}
+      {isToday && <form onSubmit={handleSeal}>
         {error && (
           <p
             className="mb-6 text-sm rounded-xl px-4 py-3"
@@ -163,23 +267,41 @@ export default function ReviewPageClient({
           {/* ── Left: Journal column (3/5) ─────────────────────────── */}
           <div className="col-span-3 space-y-8">
             <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-3)" }}>
-                Today&apos;s Log
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-3)" }}>
+                  Today&apos;s Log
+                </p>
+                {speech.supported && (
+                  <button
+                    type="button"
+                    onClick={handleMic}
+                    title={speech.listening ? "Stop dictation" : "Dictate your log"}
+                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all"
+                    style={{
+                      backgroundColor: speech.listening ? "var(--imp-high)" : "var(--surface-2)",
+                      color: speech.listening ? "#fff" : "var(--text-3)",
+                      border: `1px solid ${speech.listening ? "var(--imp-high)" : "var(--border)"}`,
+                    }}
+                  >
+                    {speech.listening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                    {speech.listening ? "Stop" : "Dictate"}
+                  </button>
+                )}
+              </div>
               <textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
                 rows={9}
-                placeholder="How did today go? What are you carrying into tomorrow?"
+                placeholder={speech.listening ? "Listening… speak your log entry" : "How did today go? What are you carrying into tomorrow?"}
                 className="w-full rounded-xl p-5 text-base leading-relaxed resize-none outline-none transition-all"
                 style={{
                   backgroundColor: "var(--surface)",
                   color: "var(--text)",
-                  border: "1px solid var(--border)",
+                  border: `1px solid ${speech.listening ? "var(--imp-high)" : "var(--border)"}`,
                   fontFamily: "inherit",
                 }}
                 onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
-                onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+                onBlur={(e) => { if (!speech.listening) (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
               />
             </div>
 
@@ -327,7 +449,7 @@ export default function ReviewPageClient({
 
           </div>
         </div>
-      </form>
+      </form>}
 
     </div>
   );

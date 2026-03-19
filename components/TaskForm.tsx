@@ -25,21 +25,40 @@ const IMPORTANCES: {
   { value: "low",    label: "Low Priority",    description: "Nice to do when I have time",        color: "var(--imp-low)" },
 ];
 
+const RECURRENCE_OPTIONS: { value: string | null; label: string }[] = [
+  { value: null,      label: "None" },
+  { value: "daily",   label: "Daily" },
+  { value: "weekly",  label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
+
+interface DefaultFields {
+  title?: string;
+  due_at?: string | null;
+  importance?: Importance;
+  category?: Category;
+  notes?: string | null;
+}
+
 interface Props {
   task?: Task;
+  defaults?: DefaultFields;
   onClose: () => void;
 }
 
-export default function TaskForm({ task, onClose }: Props) {
-  const [title, setTitle]           = useState(task?.title ?? "");
-  const [notes, setNotes]           = useState(task?.notes ?? "");
-  const [category, setCategory]     = useState<Category>(task?.category ?? "personal");
-  const [importance, setImportance] = useState<Importance>(task?.importance ?? "medium");
-  const [dueAt, setDueAt]           = useState(
-    task?.due_at ? new Date(task.due_at).toISOString().slice(0, 16) : ""
+export default function TaskForm({ task, defaults, onClose }: Props) {
+  const [title, setTitle]                   = useState(task?.title ?? defaults?.title ?? "");
+  const [notes, setNotes]                   = useState(task?.notes ?? defaults?.notes ?? "");
+  const [category, setCategory]             = useState<Category>(task?.category ?? defaults?.category ?? "personal");
+  const [importance, setImportance]         = useState<Importance>(task?.importance ?? defaults?.importance ?? "medium");
+  const [dueAt, setDueAt]                   = useState(
+    task?.due_at        ? new Date(task.due_at).toISOString().slice(0, 16)
+    : defaults?.due_at  ? new Date(defaults.due_at).toISOString().slice(0, 16)
+    : ""
   );
-  const [error, setError]           = useState<string | null>(null);
-  const [pending, startTransition]  = useTransition();
+  const [recurrenceRule, setRecurrenceRule] = useState<string | null>(task?.recurrence_rule ?? null);
+  const [error, setError]                   = useState<string | null>(null);
+  const [pending, startTransition]          = useTransition();
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
@@ -61,6 +80,7 @@ export default function TaskForm({ task, onClose }: Props) {
           category,
           importance,
           due_at: dueAt ? new Date(dueAt).toISOString() : null,
+          recurrence_rule: recurrenceRule,
         };
         if (task) await updateTask(task.id, input);
         else await createTask(input);
@@ -256,6 +276,33 @@ export default function TaskForm({ task, onClose }: Props) {
                         </svg>
                       )}
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Recurrence */}
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: "var(--text-3)" }}>
+              Repeat
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              {RECURRENCE_OPTIONS.map((opt) => {
+                const selected = recurrenceRule === opt.value;
+                return (
+                  <button
+                    key={opt.value ?? "none"}
+                    type="button"
+                    onClick={() => setRecurrenceRule(opt.value)}
+                    className="px-4 py-2 rounded-lg text-xs font-bold transition-all duration-150"
+                    style={
+                      selected
+                        ? { backgroundColor: "var(--accent)", color: "#fff", boxShadow: "0 2px 8px rgba(26,64,194,0.2)" }
+                        : { backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }
+                    }
+                  >
+                    {opt.label}
                   </button>
                 );
               })}

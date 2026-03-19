@@ -4,6 +4,17 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase-server";
 import type { DailyReview } from "@/types";
 
+export async function getReviewByDate(date: string): Promise<DailyReview | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("daily_reviews")
+    .select("*")
+    .eq("review_date", date)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data as DailyReview | null;
+}
+
 export async function getTodayReview(): Promise<DailyReview | null> {
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);

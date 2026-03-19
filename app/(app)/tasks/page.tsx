@@ -1,8 +1,18 @@
-export default function TasksPage() {
+import { getTasks } from "@/app/actions/tasks";
+import { groupTasks } from "@/lib/priority";
+import TaskList from "@/components/TaskList";
+
+export const dynamic = "force-dynamic";
+
+export default async function TasksPage() {
+  const tasks = await getTasks();
+  const grouped = groupTasks(tasks);
+  const completed = tasks.filter((t) => t.is_completed)
+    .sort((a, b) => new Date(b.completed_at!).getTime() - new Date(a.completed_at!).getTime());
+
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-      <p className="mt-2 text-gray-500">Task management coming in Phase 2.</p>
+    <div className="mx-auto max-w-2xl p-8">
+      <TaskList grouped={grouped} completedTasks={completed} />
     </div>
   );
 }

@@ -114,11 +114,11 @@ Nudge is a **personal hub** for staying on track and not missing what matters. N
 - [x] Overlap detection for concurrent events (column layout)
 - [x] Calendar added to sidebar + mobile bottom nav
 
-#### 7c — Event Capture & Editing
-- [ ] Event capture form (title, type, start/end time, location, recurrence)
-- [ ] Inline editing on calendar
-- [ ] Recurrence support (daily, weekly, monthly, custom RRULE)
-- [ ] All-day events
+#### 7c — Event Capture & Editing ✅
+- [x] Event capture form (title, type, start/end time, location, recurrence)
+- [x] Inline editing on calendar (click event block → edit modal with save + delete)
+- [x] Recurrence support (daily, weekly, monthly)
+- [x] All-day events toggle
 
 #### 7d — Apple Calendar Integration
 - [ ] ICS feed endpoint (`/api/calendar/feed.ics`) — subscribe from Apple Calendar

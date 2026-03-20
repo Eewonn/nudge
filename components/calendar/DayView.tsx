@@ -18,9 +18,10 @@ interface Props {
   events: Event[];
   tasks: Task[];
   onSlotClick: (date: string, hour: number) => void;
+  onEventClick?: (event: Event) => void;
 }
 
-export default function DayView({ currentDate, events, tasks, onSlotClick }: Props) {
+export default function DayView({ currentDate, events, tasks, onSlotClick, onEventClick }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dateStr   = currentDate.toLocaleDateString("en-CA");
   const today     = isToday(currentDate);
@@ -135,6 +136,7 @@ export default function DayView({ currentDate, events, tasks, onSlotClick }: Pro
                     borderLeft: `3px solid ${color}`,
                     zIndex: 1,
                   }}
+                  onClick={(e) => { e.stopPropagation(); onEventClick?.(ev); }}
                 >
                   <div className="text-xs font-bold leading-tight" style={{ color }}>
                     {ev.title}

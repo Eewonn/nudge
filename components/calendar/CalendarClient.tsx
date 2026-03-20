@@ -22,6 +22,7 @@ export default function CalendarClient({ events: initial, tasks }: Props) {
   const [localEvents, setLocalEvents] = useState<Event[]>(initial);
   const [localTasks, setLocalTasks]   = useState<Task[]>(tasks);
   const [createSlot, setCreateSlot]   = useState<{ date: string; hour?: number } | null>(null);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
@@ -74,6 +75,16 @@ export default function CalendarClient({ events: initial, tasks }: Props) {
   function handleTaskCreated(task: Task) {
     setLocalTasks(prev => [...prev, task]);
     setCreateSlot(null);
+  }
+
+  function handleEventUpdated(event: Event) {
+    setLocalEvents(prev => prev.map(e => e.id === event.id ? event : e));
+    setEditingEvent(null);
+  }
+
+  function handleEventDeleted(id: string) {
+    setLocalEvents(prev => prev.filter(e => e.id !== id));
+    setEditingEvent(null);
   }
 
   // ── Shared view props ──────────────────────────────────────────────────────
@@ -164,6 +175,7 @@ export default function CalendarClient({ events: initial, tasks }: Props) {
             events={localEvents}
             tasks={localTasks}
             onSlotClick={handleSlotClick}
+            onEventClick={setEditingEvent}
           />
         )}
         {view === "day" && (
@@ -172,6 +184,7 @@ export default function CalendarClient({ events: initial, tasks }: Props) {
             events={localEvents}
             tasks={localTasks}
             onSlotClick={handleSlotClick}
+            onEventClick={setEditingEvent}
           />
         )}
       </div>
@@ -183,6 +196,18 @@ export default function CalendarClient({ events: initial, tasks }: Props) {
           onClose={() => setCreateSlot(null)}
           onEventCreated={handleEventCreated}
           onTaskCreated={handleTaskCreated}
+        />
+      )}
+
+      {/* ── Edit event modal ── */}
+      {editingEvent && (
+        <QuickCreateModal
+          event={editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onEventCreated={handleEventCreated}
+          onTaskCreated={handleTaskCreated}
+          onEventUpdated={handleEventUpdated}
+          onEventDeleted={handleEventDeleted}
         />
       )}
     </div>

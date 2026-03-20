@@ -20,9 +20,10 @@ interface Props {
   events: Event[];
   tasks: Task[];
   onSlotClick: (date: string, hour: number) => void;
+  onEventClick?: (event: Event) => void;
 }
 
-export default function WeekView({ weekStart, events, tasks, onSlotClick }: Props) {
+export default function WeekView({ weekStart, events, tasks, onSlotClick, onEventClick }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -159,6 +160,7 @@ export default function WeekView({ weekStart, events, tasks, onSlotClick }: Prop
                         zIndex: 1,
                       }}
                       title={`${ev.title} · ${formatTime(ev.start_at)}${ev.end_at ? ` – ${formatTime(ev.end_at)}` : ""}`}
+                      onClick={(e) => { e.stopPropagation(); onEventClick?.(ev); }}
                     >
                       <div
                         className="text-[11px] font-bold leading-tight truncate"

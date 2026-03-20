@@ -120,10 +120,10 @@ Nudge is a **personal hub** for staying on track and not missing what matters. N
 - [x] Recurrence support (daily, weekly, monthly)
 - [x] All-day events toggle
 
-#### 7d — Apple Calendar Integration
-- [ ] ICS feed endpoint (`/api/calendar/feed.ics`) — subscribe from Apple Calendar
-- [ ] Event import from ICS file upload
-- [ ] Sync state tracking (`calendar_sync_log` table)
+#### 7d — Apple Calendar Integration ✅
+- [x] ICS feed endpoint (`/api/calendar/feed.ics?token=...`) — subscribe from Apple/Google Calendar
+- [x] Event import from .ics file upload (Settings page)
+- [x] Feed URL + copy button in Settings → Calendar Integration
 
 ---
 

@@ -20,5 +20,7 @@ export default async function SettingsPage() {
     notif_overdue:       meta.notif_overdue          ?? true,
   };
 
-  return <SettingsClient fullName={fullName} email={email} prefs={prefs} />;
+  const feedToken = process.env.CALENDAR_FEED_TOKEN ?? "";
+
+  return <SettingsClient fullName={fullName} email={email} prefs={prefs} feedToken={feedToken} />;
 }

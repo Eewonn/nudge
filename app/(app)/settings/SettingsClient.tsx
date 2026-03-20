@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { updateDisplayName, updateNotificationPrefs, sendTestEmail } from "@/app/actions/profile";
 import type { NotifPrefs } from "@/app/actions/profile";
-import { User, Bell, Mail, Send } from "lucide-react";
+import { importIcsFile } from "@/app/actions/ics";
+import { User, Bell, Mail, Send, CalendarDays, Copy, Check, Upload } from "lucide-react";
 
 interface Props {
-  fullName: string;
-  email:    string;
-  prefs:    NotifPrefs;
+  fullName:  string;
+  email:     string;
+  prefs:     NotifPrefs;
+  feedToken: string;
 }
 
 // ── Toggle ─────────────────────────────────────────────────────────────────
@@ -80,7 +82,7 @@ function NotifRow({ label, description, checked, onChange, disabled }: {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
-export default function SettingsClient({ fullName, email, prefs: initialPrefs }: Props) {
+export default function SettingsClient({ fullName, email, prefs: initialPrefs, feedToken }: Props) {
   const [name, setName]         = useState(fullName);
   const [nameMsg, setNameMsg]   = useState<{ ok: boolean; text: string } | null>(null);
   const [prefs, setPrefs]       = useState<NotifPrefs>(initialPrefs);
@@ -89,6 +91,44 @@ export default function SettingsClient({ fullName, email, prefs: initialPrefs }:
   const [namePending,  startNameTransition]  = useTransition();
   const [prefsPending, startPrefsTransition] = useTransition();
   const [testPending,  startTestTransition]  = useTransition();
+  const [copied, setCopied]     = useState(false);
+  const [importMsg, setImportMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [importPending, startImportTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const feedUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/api/calendar/feed.ics?token=${feedToken}`
+    : `/api/calendar/feed.ics?token=${feedToken}`;
+
+  function handleCopyFeedUrl() {
+    navigator.clipboard.writeText(feedUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function handleIcsUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportMsg(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      startImportTransition(async () => {
+        try {
+          const result = await importIcsFile(content);
+          setImportMsg({
+            ok: true,
+            text: `Imported ${result.imported} event${result.imported !== 1 ? "s" : ""}${result.skipped ? `, ${result.skipped} skipped` : ""}${result.errors ? `, ${result.errors} failed` : ""}.`,
+          });
+        } catch {
+          setImportMsg({ ok: false, text: "Import failed. Make sure it's a valid .ics file." });
+        }
+      });
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
 
   function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
@@ -191,6 +231,71 @@ export default function SettingsClient({ fullName, email, prefs: initialPrefs }:
             </p>
           )}
         </form>
+      </Section>
+
+      {/* ── Calendar Integration ──────────────────────────────────────────── */}
+      <Section icon={CalendarDays} title="Calendar Integration">
+        {/* Feed URL */}
+        <div className="space-y-2">
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Subscribe feed</p>
+          <p className="text-xs" style={{ color: "var(--text-3)" }}>
+            Add this URL to Apple Calendar, Google Calendar, or any app that supports iCalendar subscriptions.
+            In Apple Calendar: File → New Calendar Subscription → paste the URL.
+          </p>
+          <div className="flex gap-2 items-center">
+            <code
+              className="flex-1 text-xs px-3 py-2 rounded-lg truncate font-mono"
+              style={{ backgroundColor: "var(--surface-2)", color: "var(--text-2)", border: "1px solid var(--border)" }}
+            >
+              {feedUrl}
+            </code>
+            <button
+              onClick={handleCopyFeedUrl}
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: copied ? "var(--success)" : "var(--surface-2)",
+                color: copied ? "#fff" : "var(--text-2)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        </div>
+
+        {/* ICS Import */}
+        <div className="pt-4 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
+          <p className="text-sm font-semibold" style={{ color: "var(--text)" }}>Import .ics file</p>
+          <p className="text-xs" style={{ color: "var(--text-3)" }}>
+            Import events from an exported iCalendar file. Existing events with the same ID will be updated.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".ics,text/calendar"
+              className="hidden"
+              onChange={handleIcsUpload}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importPending}
+              className="flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50 active:scale-95"
+              style={{ borderColor: "var(--border-strong)", color: "var(--text-2)", backgroundColor: "var(--surface-2)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; (e.currentTarget as HTMLElement).style.color = "var(--accent)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; }}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {importPending ? "Importing…" : "Choose file"}
+            </button>
+            {importMsg && (
+              <p className="text-xs font-medium" style={{ color: importMsg.ok ? "var(--success)" : "var(--danger)" }}>
+                {importMsg.text}
+              </p>
+            )}
+          </div>
+        </div>
       </Section>
 
       {/* ── Notifications ─────────────────────────────────────────────────── */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo, memo } from "react";
 import type { Event, Task } from "@/types";
 import {
   eventsForDay, tasksForDay,
@@ -21,7 +21,7 @@ interface Props {
   onEventClick?: (event: Event) => void;
 }
 
-export default function DayView({ currentDate, events, tasks, onSlotClick, onEventClick }: Props) {
+const DayView = memo(function DayView({ currentDate, events, tasks, onSlotClick, onEventClick }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dateStr   = currentDate.toLocaleDateString("en-CA");
   const today     = isToday(currentDate);
@@ -33,10 +33,15 @@ export default function DayView({ currentDate, events, tasks, onSlotClick, onEve
     }
   }, []);
 
-  const dayEvents = eventsForDay(events, currentDate).filter(e => !e.is_all_day);
-  const allDay    = eventsForDay(events, currentDate).filter(e => e.is_all_day);
-  const dayTasks  = tasksForDay(tasks, currentDate);
-  const laid      = layoutDayEvents(dayEvents);
+  const { dayEvents, allDay, dayTasks, laid } = useMemo(() => {
+    const dayEvents = eventsForDay(events, currentDate).filter(e => !e.is_all_day);
+    return {
+      dayEvents,
+      allDay:   eventsForDay(events, currentDate).filter(e => e.is_all_day),
+      dayTasks: tasksForDay(tasks, currentDate),
+      laid:     layoutDayEvents(dayEvents),
+    };
+  }, [events, tasks, currentDate]);
 
   return (
     <div className="flex flex-col">
@@ -198,7 +203,9 @@ export default function DayView({ currentDate, events, tasks, onSlotClick, onEve
       </div>
     </div>
   );
-}
+});
+
+export default DayView;
 
 function NowLine() {
   const now     = new Date();

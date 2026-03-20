@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo, memo } from "react";
 import type { Event, Task } from "@/types";
 import {
   addDays, isSameDay, isToday,
@@ -23,7 +23,7 @@ interface Props {
   onEventClick?: (event: Event) => void;
 }
 
-export default function WeekView({ weekStart, events, tasks, onSlotClick, onEventClick }: Props) {
+const WeekView = memo(function WeekView({ weekStart, events, tasks, onSlotClick, onEventClick }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,7 +33,22 @@ export default function WeekView({ weekStart, events, tasks, onSlotClick, onEven
     }
   }, []);
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const days = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart]
+  );
+
+  const dayData = useMemo(() => days.map(day => {
+    const dayEvents = eventsForDay(events, day).filter(e => !e.is_all_day);
+    return {
+      dayEvents,
+      dayTasks:  tasksForDay(tasks, day),
+      laid:      layoutDayEvents(dayEvents),
+      allDay:    eventsForDay(events, day).filter(e => e.is_all_day),
+      dateStr:   day.toLocaleDateString("en-CA"),
+      today:     isToday(day),
+    };
+  }), [days, events, tasks]);
 
   return (
     <div className="flex flex-col">
@@ -76,7 +91,7 @@ export default function WeekView({ weekStart, events, tasks, onSlotClick, onEven
       </div>
 
       {/* All-day strip */}
-      <AllDayStrip days={days} events={events} />
+      <AllDayStrip days={days} allDayByDay={dayData.map(d => d.allDay)} />
 
       {/* Time grid — scrollable container */}
       <div ref={scrollRef} className="overflow-auto" style={{ height: "calc(100vh - 160px)" }}>
@@ -105,11 +120,7 @@ export default function WeekView({ weekStart, events, tasks, onSlotClick, onEven
 
           {/* Day columns */}
           {days.map((day, di) => {
-            const dayEvents = eventsForDay(events, day).filter(e => !e.is_all_day);
-            const dayTasks  = tasksForDay(tasks, day);
-            const laid      = layoutDayEvents(dayEvents);
-            const dateStr   = day.toLocaleDateString("en-CA");
-            const today     = isToday(day);
+            const { dayEvents, dayTasks, laid, dateStr, today } = dayData[di];
 
             return (
               <div
@@ -223,14 +234,13 @@ export default function WeekView({ weekStart, events, tasks, onSlotClick, onEven
       </div>
     </div>
   );
-}
+});
+
+export default WeekView;
 
 // All-day events strip
-function AllDayStrip({ days, events }: { days: Date[]; events: Event[] }) {
-  const allDayEvents = days.flatMap(day =>
-    eventsForDay(events, day).filter(e => e.is_all_day).map(e => ({ day, event: e }))
-  );
-  if (allDayEvents.length === 0) return null;
+function AllDayStrip({ days, allDayByDay }: { days: Date[]; allDayByDay: Event[][] }) {
+  if (allDayByDay.every(d => d.length === 0)) return null;
 
   return (
     <div
@@ -238,14 +248,14 @@ function AllDayStrip({ days, events }: { days: Date[]; events: Event[] }) {
       style={{ borderBottom: "1px solid var(--border)", paddingLeft: `${LEFT_GUTTER}px` }}
     >
       {days.map((day, i) => {
-        const dayAllDay = allDayEvents.filter(x => isSameDay(x.day, day));
+        const dayAllDay = allDayByDay[i];
         return (
           <div
             key={i}
             className="flex-1 min-h-[28px] px-0.5 py-0.5 space-y-0.5"
             style={{ borderLeft: "1px solid var(--border)" }}
           >
-            {dayAllDay.map(({ event: ev }) => {
+            {dayAllDay.map((ev) => {
               const color = EVENT_TYPE_COLORS[ev.type] ?? "var(--accent)";
               return (
                 <div

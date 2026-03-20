@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import HabitForm from "@/components/HabitForm";
 import QuickCreateModal from "@/components/calendar/QuickCreateModal";
 import type { Task, Habit, HabitLog } from "@/types";
-import type { DailyCompletion, DayRhythm } from "@/lib/stats";
+import type { DailyCompletion, DayRhythm, PatternInsight } from "@/lib/stats";
 
 // ── Heat level ────────────────────────────────────────────────────────────────
 
@@ -297,6 +297,31 @@ function TodaySchedule({
   );
 }
 
+// ── Pattern Insights ──────────────────────────────────────────────────────────
+
+function PatternInsights({ insights }: { insights: PatternInsight[] }) {
+  if (insights.length === 0) return null;
+  return (
+    <div
+      className="rounded-xl p-5 space-y-4"
+      style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--text-3)" }}>
+        Patterns
+      </p>
+      {insights.map((ins) => (
+        <div key={ins.label} className="flex items-start justify-between gap-3">
+          <p className="text-xs" style={{ color: "var(--text-3)" }}>{ins.label}</p>
+          <div className="text-right min-w-0">
+            <p className="text-sm font-bold truncate" style={{ color: "var(--text)" }}>{ins.value}</p>
+            <p className="text-[10px]" style={{ color: "var(--text-3)" }}>{ins.sublabel}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface Props {
@@ -316,6 +341,7 @@ interface Props {
   allHabitLogs: HabitLog[];
   today: string;
   todayHabitsDone: number;
+  patternInsights: PatternInsight[];
 }
 
 function getCurrentWeekDates(): string[] {
@@ -348,6 +374,7 @@ export default function DashboardClient({
   allHabitLogs,
   today,
   todayHabitsDone,
+  patternInsights,
 }: Props) {
   const [quickCreate, setQuickCreate] = useState(false);
   const [habitFormOpen, setHabitFormOpen] = useState(false);
@@ -675,6 +702,9 @@ export default function DashboardClient({
             </p>
             <p className="text-xs mt-3 font-medium" style={{ color: "var(--text-3)" }}>→ Log your day</p>
           </Link>
+
+          {/* Pattern Insights */}
+          <PatternInsights insights={patternInsights} />
         </div>
       </div>
 

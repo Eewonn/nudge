@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChevronLeft, ChevronRight, Mic, MicOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mic, MicOff, Sparkles } from "lucide-react";
 import { upsertReview, getReviewByDate } from "@/app/actions/review";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { generateWeeklyReview } from "@/app/actions/ai";
 import type { DailyReview, Task } from "@/types";
 import type { DailyCompletion, Grade } from "@/lib/stats";
 
@@ -99,6 +100,22 @@ export default function ReviewPageClient({
 
   // Speech-to-text
   const speech = useSpeechInput();
+
+  // Auto-generate
+  const [autoGenPending, startAutoGen] = useTransition();
+  const [autoGenError, setAutoGenError] = useState<string | null>(null);
+
+  function handleAutoGenerate() {
+    setAutoGenError(null);
+    startAutoGen(async () => {
+      try {
+        const text = await generateWeeklyReview();
+        if (text) setSummary(text);
+      } catch {
+        setAutoGenError("Generation failed. Try again.");
+      }
+    });
+  }
 
   function handleMic() {
     if (speech.listening) { speech.stop(); return; }
@@ -271,23 +288,43 @@ export default function ReviewPageClient({
                 <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: "var(--text-3)" }}>
                   Today&apos;s Log
                 </p>
-                {speech.supported && (
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleMic}
-                    title={speech.listening ? "Stop dictation" : "Dictate your log"}
-                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all"
+                    onClick={handleAutoGenerate}
+                    disabled={autoGenPending}
+                    title="Auto-generate review from this week's activity"
+                    className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all disabled:opacity-50"
                     style={{
-                      backgroundColor: speech.listening ? "var(--imp-high)" : "var(--surface-2)",
-                      color: speech.listening ? "#fff" : "var(--text-3)",
-                      border: `1px solid ${speech.listening ? "var(--imp-high)" : "var(--border)"}`,
+                      backgroundColor: "var(--accent-subtle)",
+                      color: "var(--accent)",
+                      border: "1px solid var(--accent)",
                     }}
                   >
-                    {speech.listening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-                    {speech.listening ? "Stop" : "Dictate"}
+                    <Sparkles className="h-3 w-3" />
+                    {autoGenPending ? "Generating…" : "Auto-fill"}
                   </button>
-                )}
+                  {speech.supported && (
+                    <button
+                      type="button"
+                      onClick={handleMic}
+                      title={speech.listening ? "Stop dictation" : "Dictate your log"}
+                      className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all"
+                      style={{
+                        backgroundColor: speech.listening ? "var(--imp-high)" : "var(--surface-2)",
+                        color: speech.listening ? "#fff" : "var(--text-3)",
+                        border: `1px solid ${speech.listening ? "var(--imp-high)" : "var(--border)"}`,
+                      }}
+                    >
+                      {speech.listening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                      {speech.listening ? "Stop" : "Dictate"}
+                    </button>
+                  )}
+                </div>
               </div>
+              {autoGenError && (
+                <p className="text-xs font-medium" style={{ color: "var(--danger)" }}>{autoGenError}</p>
+              )}
               <textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}

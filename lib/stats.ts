@@ -1,4 +1,4 @@
-import type { Task, HabitLog } from "@/types";
+import type { Task, HabitLog, Habit } from "@/types";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -179,6 +179,83 @@ export function computeAttentionSummary(tasks: Task[], now = new Date()): Attent
     dueLaterCount,
     label: parts.length === 0 ? "All clear" : parts.join(" · "),
   };
+}
+
+// ── Pattern insights ──────────────────────────────────────────────────────────
+
+export interface PatternInsight {
+  label: string;
+  value: string;
+  sublabel: string;
+}
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+export function computePatternInsights(
+  tasks: Task[],
+  habitLogs: HabitLog[],
+  habits: Habit[],
+  now = new Date(),
+): PatternInsight[] {
+  const insights: PatternInsight[] = [];
+
+  const completed = tasks.filter((t) => t.is_completed && t.completed_at);
+
+  // ── Best day of week (last 30 days) ───────────────────────────────────────
+  const cutoff30 = new Date(now.getTime() - 30 * 86400000);
+  const dayBuckets = new Array<number>(7).fill(0);
+  completed.forEach((t) => {
+    if (new Date(t.completed_at!) >= cutoff30) {
+      dayBuckets[new Date(t.completed_at!).getDay()]++;
+    }
+  });
+  const maxDayCount = Math.max(...dayBuckets);
+  if (maxDayCount > 0) {
+    const bestDay = dayBuckets.indexOf(maxDayCount);
+    insights.push({
+      label: "Most productive day",
+      value: DAY_NAMES[bestDay],
+      sublabel: `${maxDayCount} tasks in the last 30d`,
+    });
+  }
+
+  // ── Weekly trend (this week vs last week) ─────────────────────────────────
+  const thisWeekCutoff = new Date(now.getTime() - 7 * 86400000);
+  const lastWeekCutoff = new Date(now.getTime() - 14 * 86400000);
+  const thisWeekCount = completed.filter((t) => new Date(t.completed_at!) >= thisWeekCutoff).length;
+  const lastWeekCount = completed.filter((t) => {
+    const d = new Date(t.completed_at!);
+    return d >= lastWeekCutoff && d < thisWeekCutoff;
+  }).length;
+  const trend = thisWeekCount - lastWeekCount;
+  if (thisWeekCount > 0 || lastWeekCount > 0) {
+    insights.push({
+      label: "Weekly trend",
+      value: trend > 0 ? `+${trend} tasks` : trend === 0 ? "Same pace" : `${trend} tasks`,
+      sublabel: `${thisWeekCount} this week vs ${lastWeekCount} last`,
+    });
+  }
+
+  // ── Strongest habit this week ─────────────────────────────────────────────
+  const weekAgoStr = new Date(now.getTime() - 7 * 86400000).toISOString().slice(0, 10);
+  const activeHabits = habits.filter((h) => h.is_active);
+  if (activeHabits.length > 0) {
+    let bestHabit: Habit | null = null;
+    let bestCount = 0;
+    for (const h of activeHabits) {
+      const count = habitLogs.filter((l) => l.habit_id === h.id && l.date >= weekAgoStr).length;
+      if (count > bestCount) { bestCount = count; bestHabit = h; }
+    }
+    if (bestHabit && bestCount > 0) {
+      insights.push({
+        label: "Strongest habit",
+        value: bestHabit.name,
+        sublabel: `${bestCount}/7 days this week`,
+      });
+    }
+  }
+
+  return insights;
 }
 
 // ── User first name ───────────────────────────────────────────────────────────

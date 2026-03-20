@@ -8,7 +8,9 @@ import {
   computeDailyCompletion,
   computeWeeklyRhythm,
   computeAttentionSummary,
+  computePatternInsights,
   firstNameFromEmail,
+  type PatternInsight,
 } from "@/lib/stats";
 import DashboardClient from "./DashboardClient";
 
@@ -53,6 +55,7 @@ export default async function DashboardPage() {
   const greetingText = greeting(firstName);
 
   const somedayCount = grouped.someday.length;
+  const patternInsights = computePatternInsights(tasks, logs, habits);
 
   // Focus items: overdue first, then due within 2h, then high/medium importance today
   const now = new Date();
@@ -89,6 +92,7 @@ export default async function DashboardPage() {
       allHabitLogs={logs}
       today={today}
       todayHabitsDone={todayHabitsDone}
+      patternInsights={patternInsights}
     />
   );
 }

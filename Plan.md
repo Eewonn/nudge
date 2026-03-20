@@ -127,13 +127,13 @@ Nudge is a **personal hub** for staying on track and not missing what matters. N
 
 ---
 
-### Phase 8 — Intelligence Layer (future)
+### Phase 8 — Intelligence Layer ✅ (partial)
 
 - [ ] AI-powered daily briefing summary
 - [ ] Smart scheduling suggestions ("you have 2h free Thursday, want to block time for X?")
-- [ ] Pattern detection ("you consistently miss Monday deadlines")
-- [ ] Natural language event/task creation via voice or text
-- [ ] Weekly review auto-generation from completed tasks + habits
+- [x] Pattern detection — Most productive day, weekly trend, strongest habit widget on dashboard
+- [x] Natural language event/task creation via voice or text (Phase 7 voice capture)
+- [x] Weekly review auto-generation from completed tasks + habits (Auto-fill button on Review page)
 
 ---
 

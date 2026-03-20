@@ -2,14 +2,12 @@
 
 import Link from "next/link";
 import { useState, useTransition, useEffect } from "react";
-import { Zap, Plus, Pencil, Archive, Mic, MicOff, Check } from "lucide-react";
+import { Zap, Plus, Pencil, Archive, Check } from "lucide-react";
 import { toggleHabitLog, archiveHabit } from "@/app/actions/habits";
 import { toggleTask } from "@/app/actions/tasks";
 import { useRouter } from "next/navigation";
-import TaskForm from "@/components/TaskForm";
 import HabitForm from "@/components/HabitForm";
-import { useSpeechInput } from "@/hooks/useSpeechInput";
-import { parseVoiceCapture, type ParsedTask } from "@/app/actions/capture";
+import QuickCreateModal from "@/components/calendar/QuickCreateModal";
 import type { Task, Habit, HabitLog } from "@/types";
 import type { DailyCompletion, DayRhythm } from "@/lib/stats";
 
@@ -351,36 +349,11 @@ export default function DashboardClient({
   today,
   todayHabitsDone,
 }: Props) {
-  const [creating, setCreating] = useState(false);
-  const [captureDefaults, setCaptureDefaults] = useState<ParsedTask | undefined>();
-  const [parsing, setParsing] = useState(false);
-  const [parseError, setParseError] = useState(false);
+  const [quickCreate, setQuickCreate] = useState(false);
   const [habitFormOpen, setHabitFormOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [, startTransition] = useTransition();
   const router = useRouter();
-  const speech = useSpeechInput();
-
-  // Global "n" shortcut is handled by AppShortcuts in layout.
-  // The dashboard quick-capture bar still opens the form directly via click.
-
-  function handleMicCapture() {
-    if (speech.listening) { speech.stop(); return; }
-    speech.start(async (text) => {
-      setParsing(true);
-      setParseError(false);
-      try {
-        const parsed = await parseVoiceCapture(text);
-        setCaptureDefaults(parsed);
-      } catch {
-        setParseError(true);
-        setCaptureDefaults({ title: text, due_at: null, importance: "medium", category: "personal", notes: null });
-      } finally {
-        setParsing(false);
-        setCreating(true);
-      }
-    });
-  }
 
   const todayDoneSet = new Set(habitLogs.map((l) => l.habit_id));
   const last7 = getCurrentWeekDates();
@@ -410,56 +383,29 @@ export default function DashboardClient({
       </header>
 
       {/* ── Quick Capture ───────────────────────────────────────── */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setCreating(true)}
-          className="flex-1 flex items-center gap-4 rounded-xl px-6 py-4 text-left transition-all duration-200 group"
-          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 1px 4px rgba(15,23,48,0.04)" }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
-            (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(26,64,194,0.08)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
-            (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 4px rgba(15,23,48,0.04)";
-          }}
-        >
-          <div className="sovereign-gradient flex h-8 w-8 items-center justify-center rounded-lg shrink-0" style={{ boxShadow: "0 2px 8px rgba(26,64,194,0.25)" }}>
-            <Zap className="h-4 w-4 text-white" />
-          </div>
-          <span className="flex-1 text-sm font-medium" style={{ color: parseError ? "var(--warning)" : "var(--text-3)" }}>
-            {parsing ? "Parsing your task…" : speech.listening ? "Listening… speak your task" : parseError ? "AI parse failed — form pre-filled with your words" : "What do you need to get done?"}
-          </span>
-          <span className="sovereign-gradient rounded-lg px-3 py-1.5 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
-            N
-          </span>
-        </button>
-
-        {speech.supported && (
-          <button
-            onClick={handleMicCapture}
-            disabled={parsing}
-            title={parsing ? "Parsing…" : speech.listening ? "Stop listening" : "Speak a task"}
-            className="h-[56px] w-[56px] rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 disabled:opacity-60"
-            style={{
-              backgroundColor: speech.listening ? "var(--imp-high)" : parsing ? "var(--accent-subtle)" : "var(--surface)",
-              border: `1px solid ${speech.listening ? "var(--imp-high)" : parsing ? "var(--accent)" : "var(--border)"}`,
-              boxShadow: speech.listening ? "0 0 0 4px rgba(163,0,14,0.15)" : "0 1px 4px rgba(15,23,48,0.04)",
-            }}
-          >
-            {parsing ? (
-              <svg className="h-5 w-5 animate-spin" style={{ color: "var(--accent)" }} fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            ) : speech.listening ? (
-              <MicOff className="h-5 w-5 text-white" />
-            ) : (
-              <Mic className="h-5 w-5" style={{ color: "var(--text-3)" }} />
-            )}
-          </button>
-        )}
-      </div>
+      <button
+        onClick={() => setQuickCreate(true)}
+        className="w-full flex items-center gap-4 rounded-xl px-6 py-4 text-left transition-all duration-200 group"
+        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 1px 4px rgba(15,23,48,0.04)" }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(26,64,194,0.08)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 4px rgba(15,23,48,0.04)";
+        }}
+      >
+        <div className="sovereign-gradient flex h-8 w-8 items-center justify-center rounded-lg shrink-0" style={{ boxShadow: "0 2px 8px rgba(26,64,194,0.25)" }}>
+          <Zap className="h-4 w-4 text-white" />
+        </div>
+        <span className="flex-1 text-sm font-medium" style={{ color: "var(--text-3)" }}>
+          Add a task or event…
+        </span>
+        <span className="sovereign-gradient rounded-lg px-3 py-1.5 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
+          N
+        </span>
+      </button>
 
       {/* ── Bento: Completion + Streak ──────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -732,10 +678,12 @@ export default function DashboardClient({
         </div>
       </div>
 
-      {creating && (
-        <TaskForm
-          defaults={captureDefaults}
-          onClose={() => { setCreating(false); setCaptureDefaults(undefined); setParseError(false); }}
+      {quickCreate && (
+        <QuickCreateModal
+          slot={{ date: new Date().toLocaleDateString("en-CA"), hour: new Date().getHours() + 1 }}
+          onClose={() => setQuickCreate(false)}
+          onEventCreated={() => setQuickCreate(false)}
+          onTaskCreated={() => setQuickCreate(false)}
         />
       )}
       {habitFormOpen && (

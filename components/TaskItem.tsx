@@ -1,20 +1,41 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import { toggleTask, deleteTask } from "@/app/actions/tasks";
-import type { Task, TaskGroup } from "@/types";
+import { toggleTask, deleteTask, updateTask } from "@/app/actions/tasks";
+import type { Task, TaskGroup, Importance } from "@/types";
 import TaskForm from "./TaskForm";
+
+const IMPORTANCE_CYCLE: Importance[] = ["high", "medium", "low"];
 
 interface Props {
   task: Task;
   urgency: TaskGroup;
-  showUrgencyBadge?: boolean;
 }
 
 export default function TaskItem({ task, urgency }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft]     = useState(task.title);
+  const [fullEdit, setFullEdit]         = useState(false);
+  const [pending, startTransition]      = useTransition();
+  const titleInputRef                   = useRef<HTMLInputElement>(null);
+
+  const impColor =
+    task.importance === "high"   ? "var(--imp-high)" :
+    task.importance === "medium" ? "var(--imp-medium)" :
+                                   "var(--imp-low)";
+
+  const impLabel =
+    task.importance === "high" ? "High" :
+    task.importance === "medium" ? "Med" : "Low";
+
+  const isOverdue = urgency === "overdue" && !task.is_completed;
+
+  const dueLabel = task.due_at
+    ? new Date(task.due_at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
+    : null;
+
+  // ── Handlers ────────────────────────────────────────────────
 
   function handleToggle() {
     startTransition(() => toggleTask(task.id, !task.is_completed));
@@ -25,23 +46,41 @@ export default function TaskItem({ task, urgency }: Props) {
     startTransition(() => deleteTask(task.id));
   }
 
-  const impColor =
-    task.importance === "high"   ? "var(--imp-high)" :
-    task.importance === "medium" ? "var(--imp-medium)" :
-                                   "var(--imp-low)";
+  function handleImportanceCycle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (task.is_completed) return;
+    const idx  = IMPORTANCE_CYCLE.indexOf(task.importance);
+    const next = IMPORTANCE_CYCLE[(idx + 1) % IMPORTANCE_CYCLE.length];
+    startTransition(async () => { await updateTask(task.id, { importance: next }); });
+  }
 
-  const badgeLabel =
-    task.importance === "high" ? "High Priority" :
-    task.importance === "medium" ? "Medium Priority" : "Low Priority";
+  function startTitleEdit(e: React.MouseEvent) {
+    if (task.is_completed) return;
+    e.preventDefault();
+    setTitleDraft(task.title);
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 0);
+  }
 
-  const isOverdue = urgency === "overdue" && !task.is_completed;
+  function commitTitle() {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== task.title) {
+      startTransition(async () => { await updateTask(task.id, { title: trimmed }); });
+    }
+    setEditingTitle(false);
+  }
 
-  const dueLabel = task.due_at
-    ? new Date(task.due_at).toLocaleString(undefined, {
-        month: "short", day: "numeric",
-        hour: "numeric", minute: "2-digit",
-      })
-    : null;
+  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter")  { e.preventDefault(); commitTitle(); }
+    if (e.key === "Escape") { setEditingTitle(false); setTitleDraft(task.title); }
+  }
+
+  function handleDueDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    startTransition(async () => { await updateTask(task.id, { due_at: val ? new Date(val).toISOString() : null }); });
+  }
+
+  // ── Render ──────────────────────────────────────────────────
 
   return (
     <>
@@ -51,7 +90,7 @@ export default function TaskItem({ task, urgency }: Props) {
           backgroundColor: task.is_completed ? "var(--surface-2)" : "var(--surface)",
           border: `1px solid ${isOverdue ? "rgba(163,0,14,0.2)" : "var(--border)"}`,
           boxShadow: task.is_completed ? "none" : "0 1px 4px rgba(15,23,48,0.04)",
-          opacity: pending ? 0.5 : 1,
+          opacity: pending ? 0.6 : 1,
         }}
         onMouseEnter={(e) => {
           if (!task.is_completed) {
@@ -65,10 +104,10 @@ export default function TaskItem({ task, urgency }: Props) {
         }}
       >
         {/* Left importance strip */}
-        {!task.is_completed && (
-          <div className="self-stretch w-1 shrink-0" style={{ backgroundColor: impColor }} />
-        )}
-        {task.is_completed && <div className="self-stretch w-1 shrink-0" style={{ backgroundColor: "var(--border)" }} />}
+        <div
+          className="self-stretch w-1 shrink-0"
+          style={{ backgroundColor: task.is_completed ? "var(--border)" : impColor }}
+        />
 
         {/* Circle toggle */}
         <button
@@ -76,8 +115,7 @@ export default function TaskItem({ task, urgency }: Props) {
           disabled={pending}
           className="ml-5 mr-4 shrink-0 flex items-center justify-center rounded-full border-2 transition-all duration-200"
           style={{
-            width: "22px",
-            height: "22px",
+            width: "22px", height: "22px",
             borderColor: task.is_completed ? "var(--accent)" : "var(--border-strong)",
             backgroundColor: task.is_completed ? "var(--accent)" : "transparent",
           }}
@@ -104,13 +142,17 @@ export default function TaskItem({ task, urgency }: Props) {
         {/* Content */}
         <div className="flex-1 min-w-0 py-4 pr-4">
           {!task.is_completed && (
-            <div className="flex items-center gap-2 mb-1">
-              <span
-                className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm text-white"
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              {/* Importance badge — click to cycle */}
+              <button
+                type="button"
+                onClick={handleImportanceCycle}
+                title="Click to change priority"
+                className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-sm text-white transition-opacity hover:opacity-80 active:scale-95"
                 style={{ backgroundColor: impColor }}
               >
-                {badgeLabel}
-              </span>
+                {impLabel}
+              </button>
               {task.category && (
                 <span className="text-xs font-semibold opacity-50" style={{ color: "var(--text-2)" }}>
                   {task.category}
@@ -119,30 +161,62 @@ export default function TaskItem({ task, urgency }: Props) {
             </div>
           )}
 
-          <h4
-            className="font-bold leading-snug"
-            style={{
-              color: task.is_completed ? "var(--text-3)" : "var(--text)",
-              fontSize: task.is_completed ? "0.875rem" : "1rem",
-              textDecoration: task.is_completed ? "line-through" : "none",
-            }}
-          >
-            {task.title}
-          </h4>
+          {/* Title — click to edit inline */}
+          {editingTitle ? (
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={handleTitleKeyDown}
+              className="w-full font-bold leading-snug bg-transparent outline-none rounded px-1 -mx-1"
+              style={{
+                fontSize: "1rem",
+                color: "var(--text)",
+                border: "1px solid var(--accent)",
+                boxShadow: "0 0 0 3px rgba(26,64,194,0.12)",
+              }}
+            />
+          ) : (
+            <h4
+              className={`font-bold leading-snug ${!task.is_completed ? "cursor-text hover:opacity-80" : ""}`}
+              style={{
+                color: task.is_completed ? "var(--text-3)" : "var(--text)",
+                fontSize: task.is_completed ? "0.875rem" : "1rem",
+                textDecoration: task.is_completed ? "line-through" : "none",
+              }}
+              onClick={startTitleEdit}
+              title={task.is_completed ? undefined : "Click to edit"}
+            >
+              {task.title}
+            </h4>
+          )}
 
-          {!task.is_completed && (dueLabel || task.notes) && (
-            <div className="flex items-center gap-3 mt-1.5">
-              {dueLabel && (
+          {/* Due date — inline picker */}
+          {!task.is_completed && (
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              <label
+                className="flex items-center gap-1.5 text-xs font-medium cursor-pointer group/date"
+                title="Click to change due date"
+              >
+                <svg className="h-3 w-3 shrink-0" style={{ color: isOverdue ? "var(--imp-high)" : "var(--text-3)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
                 <span
-                  className="flex items-center gap-1.5 text-xs font-medium"
+                  className="group-hover/date:underline"
                   style={{ color: isOverdue ? "var(--imp-high)" : "var(--text-3)" }}
                 >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                  </svg>
-                  {isOverdue && <span className="font-bold">Overdue · </span>}{dueLabel}
+                  {isOverdue && <span className="font-bold">Overdue · </span>}
+                  {dueLabel ?? "Set due date"}
                 </span>
-              )}
+                <input
+                  type="datetime-local"
+                  value={task.due_at ? new Date(task.due_at).toISOString().slice(0, 16) : ""}
+                  onChange={handleDueDateChange}
+                  className="absolute opacity-0 w-0 h-0"
+                  tabIndex={-1}
+                />
+              </label>
               {task.notes && (
                 <span className="text-xs truncate max-w-[200px]" style={{ color: "var(--text-3)" }}>
                   {task.notes}
@@ -161,10 +235,10 @@ export default function TaskItem({ task, urgency }: Props) {
         {/* Hover actions */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mr-4">
           <button
-            onClick={() => setEditing(true)}
+            onClick={() => setFullEdit(true)}
             className="rounded-lg p-1.5 transition-colors"
             style={{ color: "var(--text-3)" }}
-            title="Edit"
+            title="Full edit"
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)"; (e.currentTarget as HTMLElement).style.color = "var(--text)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
           >
@@ -183,7 +257,7 @@ export default function TaskItem({ task, urgency }: Props) {
         </div>
       </div>
 
-      {editing && <TaskForm task={task} onClose={() => setEditing(false)} />}
+      {fullEdit && <TaskForm task={task} onClose={() => setFullEdit(false)} />}
     </>
   );
 }

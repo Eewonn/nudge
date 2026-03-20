@@ -7,6 +7,7 @@ import {
   computeLongestStreak,
   computeDailyCompletion,
   computeWeeklyRhythm,
+  computeAttentionSummary,
   firstNameFromEmail,
 } from "@/lib/stats";
 import DashboardClient from "./DashboardClient";
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
   const longestStreak = computeLongestStreak(tasks, logs);
   const completion    = computeDailyCompletion(tasks);
   const rhythm        = computeWeeklyRhythm(tasks);
+  const attention     = computeAttentionSummary(tasks);
 
   const activeHabits  = habits.filter((h) => h.is_active);
   const todayHabitsDone = activeHabits.filter((h) =>
@@ -52,11 +54,22 @@ export default async function DashboardPage() {
 
   const somedayCount = grouped.someday.length;
 
-  // Urgent = overdue + high/medium importance today
-  const urgentTasks = [
+  // Focus items: overdue first, then due within 2h, then high/medium importance today
+  const now = new Date();
+  const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+  const focusItems = [
     ...grouped.overdue,
-    ...grouped.today.filter((t) => t.importance !== "low"),
-  ].slice(0, 6);
+    ...grouped.today.filter((t) => t.due_at && new Date(t.due_at) <= twoHoursLater),
+    ...grouped.today.filter((t) => !t.due_at || new Date(t.due_at) > twoHoursLater).filter((t) => t.importance !== "low"),
+  ].filter((t, i, arr) => arr.findIndex((x) => x.id === t.id) === i).slice(0, 5);
+
+  // Today's schedule: all today tasks sorted by time
+  const todaySchedule = [...grouped.today].sort((a, b) => {
+    if (!a.due_at && !b.due_at) return 0;
+    if (!a.due_at) return 1;
+    if (!b.due_at) return -1;
+    return new Date(a.due_at).getTime() - new Date(b.due_at).getTime();
+  });
 
   return (
     <DashboardClient
@@ -65,7 +78,10 @@ export default async function DashboardPage() {
       streak={streak}
       longestStreak={longestStreak}
       rhythm={rhythm}
-      urgentTasks={urgentTasks}
+      focusItems={focusItems}
+      todaySchedule={todaySchedule}
+      attentionLabel={attention.label}
+      overdueCount={attention.overdueCount}
       somedayCount={somedayCount}
       activeHabits={activeHabits}
       allHabits={habits}

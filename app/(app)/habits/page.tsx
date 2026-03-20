@@ -1,37 +1,21 @@
-"use client";
-
-import { useState, useEffect, useTransition } from "react";
-import { Plus } from "lucide-react";
 import { getHabits, getHabitLogs } from "@/app/actions/habits";
-import type { Habit, HabitLog } from "@/types";
 import HabitItem from "@/components/HabitItem";
-import HabitForm from "@/components/HabitForm";
+import NewHabitButton from "./NewHabitButton";
 
-export default function HabitsPage() {
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [logs, setLogs] = useState<HabitLog[]>([]);
-  const [creating, setCreating] = useState(false);
-  const [, startTransition] = useTransition();
+export const dynamic = "force-dynamic";
 
-  function load() {
-    startTransition(async () => {
-      const [h, l] = await Promise.all([getHabits(), getHabitLogs(7)]);
-      setHabits(h);
-      setLogs(l);
-    });
-  }
-
-  useEffect(() => { load(); }, []);
+export default async function HabitsPage() {
+  const [habits, logs] = await Promise.all([getHabits(), getHabitLogs(7)]);
 
   const active   = habits.filter((h) => h.is_active);
   const archived = habits.filter((h) => !h.is_active);
 
-  function logsFor(habit: Habit) {
+  function logsFor(habit: (typeof habits)[0]) {
     return logs.filter((l) => l.habit_id === habit.id);
   }
 
   return (
-    <div className="mx-auto max-w-2xl p-8 space-y-8">
+    <div className="mx-auto max-w-2xl p-4 md:p-8 space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -40,13 +24,7 @@ export default function HabitsPage() {
             {active.length} active · track your consistency
           </p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-accent px-3.5 py-2 text-[13px] font-semibold text-white hover:bg-accent-hover transition-colors"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New habit
-        </button>
+        <NewHabitButton />
       </div>
 
       {/* Active habits */}
@@ -74,15 +52,6 @@ export default function HabitsPage() {
             ))}
           </div>
         </section>
-      )}
-
-      {creating && (
-        <HabitForm
-          onClose={() => {
-            setCreating(false);
-            load();
-          }}
-        />
       )}
     </div>
   );

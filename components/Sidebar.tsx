@@ -3,20 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  CheckSquare,
-  BookOpen,
-  Settings,
-  LogOut,
-} from "lucide-react";
+import { Settings, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase";
-
-const NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/tasks",     label: "Tasks",     icon: CheckSquare },
-  { href: "/review",    label: "Review",    icon: BookOpen },
-];
+import { NAV_ITEMS } from "@/lib/nav-items";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -32,7 +21,7 @@ export default function Sidebar() {
   return (
     <aside
       style={{ backgroundColor: "var(--sb-bg)", borderRight: "1px solid var(--sb-border)" }}
-      className="w-64 h-screen sticky top-0 flex flex-col py-8 px-6 shrink-0"
+      className="hidden md:flex w-64 h-screen sticky top-0 flex-col py-8 px-6 shrink-0"
     >
       {/* Logo */}
       <div className="mb-8 flex items-center gap-2">
@@ -98,6 +87,10 @@ export default function Sidebar() {
 
       {/* Bottom */}
       <div className="space-y-1 pt-6" style={{ borderTop: "1px solid var(--sb-border)" }}>
+        {/* Shortcuts hint */}
+        <p className="px-3 pb-2 text-[10px] font-bold" style={{ color: "var(--sb-fg)", opacity: 0.4 }}>
+          Press <kbd className="font-mono">?</kbd> for shortcuts
+        </p>
         <Link
           href="/settings"
           className="flex w-full items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200"

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Plus, Pencil, Trash2, Archive, X, Search, Repeat } from "lucide-react";
-import { toggleTask, deleteTask, stopRecurrence } from "@/app/actions/tasks";
-import type { Task, GroupedTasks, TaskGroup } from "@/types";
+import { toggleTask, deleteTask, stopRecurrence, updateTask } from "@/app/actions/tasks";
+import type { Task, GroupedTasks, TaskGroup, Importance } from "@/types";
 import { getTaskUrgency } from "@/lib/priority";
 import TaskForm from "./TaskForm";
 import ConfirmDialog from "./ConfirmDialog";
@@ -24,18 +24,22 @@ const COLUMNS: {
 
 // ── Kanban card ───────────────────────────────────────────────────────────────
 
-function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
-  const [editing, setEditing] = useState(false);
+const IMPORTANCE_CYCLE: Importance[] = ["high", "medium", "low"];
+
+function KanbanCard({ task, urgency, onEdit }: { task: Task; urgency: TaskGroup; onEdit: (t: Task) => void }) {
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft]     = useState(task.title);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition]      = useTransition();
+  const titleInputRef                   = useRef<HTMLInputElement>(null);
 
   const impColor =
     task.importance === "high"   ? "var(--imp-high)"   :
     task.importance === "medium" ? "var(--imp-medium)" : "var(--imp-low)";
 
   const badgeLabel =
-    task.importance === "high"   ? "High Priority"   :
-    task.importance === "medium" ? "Medium Priority" : "Low Priority";
+    task.importance === "high"   ? "High"   :
+    task.importance === "medium" ? "Med" : "Low";
 
   const isOverdue = urgency === "overdue" && !task.is_completed;
 
@@ -57,6 +61,40 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
   function confirmDeletion() {
     setConfirmDelete(false);
     startTransition(() => deleteTask(task.id));
+  }
+
+  function handleImportanceCycle(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (task.is_completed) return;
+    const idx  = IMPORTANCE_CYCLE.indexOf(task.importance);
+    const next = IMPORTANCE_CYCLE[(idx + 1) % IMPORTANCE_CYCLE.length];
+    startTransition(async () => { await updateTask(task.id, { importance: next }); });
+  }
+
+  function startTitleEdit(e: React.MouseEvent) {
+    if (task.is_completed) return;
+    e.preventDefault();
+    setTitleDraft(task.title);
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.focus(), 0);
+  }
+
+  function commitTitle() {
+    const trimmed = titleDraft.trim();
+    if (trimmed && trimmed !== task.title) {
+      startTransition(async () => { await updateTask(task.id, { title: trimmed }); });
+    }
+    setEditingTitle(false);
+  }
+
+  function handleTitleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter")  { e.preventDefault(); commitTitle(); }
+    if (e.key === "Escape") { setEditingTitle(false); setTitleDraft(task.title); }
+  }
+
+  function handleDueDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    startTransition(async () => { await updateTask(task.id, { due_at: val ? new Date(val).toISOString() : null }); });
   }
 
   return (
@@ -91,17 +129,17 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
           {/* Priority + category + hover actions */}
           {!task.is_completed && (
             <div className="flex items-center gap-1.5 mb-2">
-              {/* Colored dot + label */}
-              <span
-                className="flex items-center gap-1 text-[10px] font-bold tracking-wide shrink-0"
+              {/* Importance badge — click to cycle */}
+              <button
+                type="button"
+                onClick={handleImportanceCycle}
+                title="Click to change priority"
+                className="flex items-center gap-1 text-[10px] font-bold tracking-wide shrink-0 transition-opacity hover:opacity-70 active:scale-95"
                 style={{ color: impColor }}
               >
-                <span
-                  className="w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: impColor }}
-                />
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: impColor }} />
                 {badgeLabel}
-              </span>
+              </button>
 
               {/* Category chip */}
               {task.category && (
@@ -117,7 +155,7 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
               <div className="flex-1" />
               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <button
-                  onClick={() => setEditing(true)}
+                  onClick={() => onEdit(task)}
                   className="rounded-md p-1 transition-colors duration-100"
                   style={{ color: "var(--text-3)" }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--surface-2)"; (e.currentTarget as HTMLElement).style.color = "var(--text-2)"; }}
@@ -151,18 +189,36 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
             </div>
           )}
 
-          {/* Title */}
-          <p
-            className="text-[13px] font-semibold leading-snug"
-            style={{
-              color: task.is_completed ? "var(--text-3)" : "var(--text)",
-              textDecoration: task.is_completed ? "line-through" : "none",
-            }}
-          >
-            {task.title}
-          </p>
+          {/* Title — click to edit inline */}
+          {editingTitle ? (
+            <input
+              ref={titleInputRef}
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitle}
+              onKeyDown={handleTitleKeyDown}
+              className="w-full text-[13px] font-semibold leading-snug bg-transparent outline-none rounded px-1 -mx-1"
+              style={{
+                color: "var(--text)",
+                border: "1px solid var(--accent)",
+                boxShadow: "0 0 0 3px rgba(26,64,194,0.12)",
+              }}
+            />
+          ) : (
+            <p
+              className={`text-[13px] font-semibold leading-snug ${!task.is_completed ? "cursor-text hover:opacity-75" : ""}`}
+              style={{
+                color: task.is_completed ? "var(--text-3)" : "var(--text)",
+                textDecoration: task.is_completed ? "line-through" : "none",
+              }}
+              onClick={startTitleEdit}
+              title={task.is_completed ? undefined : "Click to edit"}
+            >
+              {task.title}
+            </p>
+          )}
 
-          {/* Category + due row (completed or uncompleted) */}
+          {/* Due row */}
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {task.is_completed && task.category && (
               <span
@@ -172,17 +228,26 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
                 {task.category}
               </span>
             )}
-            {!task.is_completed && dueLabel && (
-              <span
-                className="flex items-center gap-1 text-[11px] font-medium"
-                style={{ color: isOverdue ? "var(--imp-high)" : "var(--text-3)" }}
+            {!task.is_completed && (
+              <label
+                className="flex items-center gap-1 text-[11px] font-medium cursor-pointer group/date"
+                title="Click to change due date"
               >
-                <svg className="h-2.5 w-2.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-2.5 w-2.5 shrink-0" style={{ color: isOverdue ? "var(--imp-high)" : "var(--text-3)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                 </svg>
-                {isOverdue && <span className="font-bold">Overdue · </span>}
-                {dueLabel}
-              </span>
+                <span className="group-hover/date:underline" style={{ color: isOverdue ? "var(--imp-high)" : "var(--text-3)" }}>
+                  {isOverdue && <span className="font-bold">Overdue · </span>}
+                  {dueLabel ?? "Set due date"}
+                </span>
+                <input
+                  type="datetime-local"
+                  value={task.due_at ? new Date(task.due_at).toISOString().slice(0, 16) : ""}
+                  onChange={handleDueDateChange}
+                  className="absolute opacity-0 w-0 h-0"
+                  tabIndex={-1}
+                />
+              </label>
             )}
             {task.is_completed && task.completed_at && (
               <span className="text-[10px]" style={{ color: "var(--text-3)" }}>
@@ -234,7 +299,6 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
         </div>
       </div>
 
-      {editing && <TaskForm task={task} onClose={() => setEditing(false)} />}
       {confirmDelete && (
         <ConfirmDialog
           title="Delete task"
@@ -257,6 +321,7 @@ function KanbanColumn({
   emptyText,
   index,
   onAdd,
+  onEdit,
 }: {
   label: string;
   accent: string;
@@ -265,6 +330,7 @@ function KanbanColumn({
   urgency: TaskGroup;
   index: number;
   onAdd: () => void;
+  onEdit: (t: Task) => void;
 }) {
   return (
     <div
@@ -333,6 +399,7 @@ function KanbanColumn({
               key={task.id}
               task={task}
               urgency={getTaskUrgency(task) ?? "someday"}
+              onEdit={onEdit}
             />
           ))
         )}
@@ -468,22 +535,12 @@ function ArchiveCard({ task }: { task: Task }) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function TaskList({ grouped, completedTasks }: Props) {
-  const [creating, setCreating] = useState(false);
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [creating, setCreating]         = useState(false);
+  const [editingTask, setEditingTask]   = useState<Task | null>(null);
+  const [archiveOpen, setArchiveOpen]   = useState(false);
+  const [search, setSearch]             = useState("");
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement).isContentEditable) return;
-      if (e.key === "n" || e.key === "N") {
-        e.preventDefault();
-        setCreating(true);
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  // Global "n" shortcut handled by AppShortcuts in layout.
 
   const q = search.toLowerCase().trim();
   const filteredGrouped = q
@@ -505,11 +562,11 @@ export default function TaskList({ grouped, completedTasks }: Props) {
     <div className="flex flex-col gap-6 h-full">
       {/* Header */}
       <div
-        className="flex items-start justify-between"
+        className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
         style={{ animation: "kanban-in 0.3s ease both" }}
       >
         <div>
-          <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
+          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight" style={{ color: "var(--text)" }}>
             Tasks
           </h1>
           <div className="flex items-center gap-3 mt-2 flex-wrap">
@@ -547,12 +604,9 @@ export default function TaskList({ grouped, completedTasks }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {/* Search */}
-          <div
-            className="relative flex items-center"
-            style={{ width: "220px" }}
-          >
+          <div className="relative flex items-center flex-1 min-w-[160px]">
             <Search
               className="absolute left-3 h-3.5 w-3.5 pointer-events-none"
               style={{ color: "var(--text-3)" }}
@@ -642,11 +696,13 @@ export default function TaskList({ grouped, completedTasks }: Props) {
             urgency={key}
             index={i}
             onAdd={() => setCreating(true)}
+            onEdit={setEditingTask}
           />
         ))}
       </div>
 
-      {creating && <TaskForm onClose={() => setCreating(false)} />}
+      {creating    && <TaskForm onClose={() => setCreating(false)} />}
+      {editingTask && <TaskForm task={editingTask} onClose={() => setEditingTask(null)} />}
       {archiveOpen && <ArchiveDrawer tasks={completedTasks} onClose={() => setArchiveOpen(false)} />}
     </div>
   );

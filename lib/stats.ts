@@ -135,6 +135,52 @@ export function computePerformanceScore(streak: number, completionPct: number): 
   return "D";
 }
 
+// ── Attention summary ─────────────────────────────────────────────────────────
+
+export interface AttentionSummary {
+  overdueCount: number;
+  dueSoonCount: number;   // due within 2 hours
+  dueLaterCount: number;  // due today but not within 2 hours
+  label: string;
+}
+
+export function computeAttentionSummary(tasks: Task[], now = new Date()): AttentionSummary {
+  const active = tasks.filter((t) => !t.is_completed);
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+  const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+
+  const overdueCount = active.filter(
+    (t) => t.due_at && new Date(t.due_at) < startOfToday
+  ).length;
+
+  const dueSoonCount = active.filter((t) => {
+    if (!t.due_at) return false;
+    const due = new Date(t.due_at);
+    return due >= now && due <= twoHoursLater;
+  }).length;
+
+  const dueLaterCount = active.filter((t) => {
+    if (!t.due_at) return false;
+    const due = new Date(t.due_at);
+    return due > twoHoursLater && due < startOfTomorrow;
+  }).length;
+
+  const parts: string[] = [];
+  if (overdueCount > 0) parts.push(`${overdueCount} overdue`);
+  if (dueSoonCount > 0) parts.push(`${dueSoonCount} due in 2h`);
+  if (dueLaterCount > 0) parts.push(`${dueLaterCount} due later today`);
+
+  return {
+    overdueCount,
+    dueSoonCount,
+    dueLaterCount,
+    label: parts.length === 0 ? "All clear" : parts.join(" · "),
+  };
+}
+
 // ── User first name ───────────────────────────────────────────────────────────
 
 export function firstNameFromEmail(email: string): string {

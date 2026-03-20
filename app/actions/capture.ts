@@ -1,6 +1,6 @@
 "use server";
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import type { Category, Importance } from "@/types";
 
 export interface ParsedTask {
@@ -11,7 +11,7 @@ export interface ParsedTask {
   notes:      string | null;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const CATEGORIES: Category[] = ["work", "personal", "academics", "acm", "thesis", "other"];
 const IMPORTANCES: Importance[] = ["low", "medium", "high"];
@@ -23,9 +23,12 @@ export async function parseVoiceCapture(transcript: string): Promise<ParsedTask>
   });
   const isoNow = now.toISOString();
 
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
-    systemInstruction: `You extract structured task data from spoken voice input.
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      {
+        role: "system",
+        content: `You extract structured task data from spoken voice input.
 Today is ${todayStr} (${isoNow}).
 
 Return ONLY valid JSON with these fields:
@@ -36,14 +39,17 @@ Return ONLY valid JSON with these fields:
 - notes: string or null (any extra detail that doesn't fit in the title)
 
 No explanation, no markdown, just the JSON object.`,
+      },
+      { role: "user", content: transcript },
+    ],
+    temperature: 0,
+    response_format: { type: "json_object" },
   });
 
-  const result = await model.generateContent(transcript);
-  const raw = result.response.text().trim();
+  const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+  console.log("[capture] Groq raw response:", raw);
 
-  // Strip markdown code fences if present
-  const json = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-  const parsed = JSON.parse(json) as ParsedTask;
+  const parsed = JSON.parse(raw) as ParsedTask;
 
   // Validate / sanitise
   if (!parsed.title || typeof parsed.title !== "string") throw new Error("No title");

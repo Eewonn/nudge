@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { cookies } from "next/headers";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
@@ -18,13 +19,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get("nudge-theme")?.value ?? "light";
+  const isDark = themeCookie === "dark";
+
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} h-full`} suppressHydrationWarning>
-      <head>
-        {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('nudge-theme')||'light';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();` }} />
-      </head>
+    <html lang="en" className={`${plusJakartaSans.variable} h-full${isDark ? " dark" : ""}`} suppressHydrationWarning>
       <body className="h-full bg-bg text-text">
         <ThemeProvider>{children}</ThemeProvider>
       </body>

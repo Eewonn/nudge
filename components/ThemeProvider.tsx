@@ -24,10 +24,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("light");
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light");
 
-  // On mount, read from localStorage
+  // On mount, read from localStorage and sync to cookie
   useEffect(() => {
     const stored = (localStorage.getItem("nudge-theme") as Theme) || "light";
     setThemeState(stored);
+    document.cookie = `nudge-theme=${stored}; path=/; max-age=31536000; SameSite=Lax`;
   }, []);
 
   // Apply class to <html> whenever theme changes
@@ -56,6 +57,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   function setTheme(t: Theme) {
     setThemeState(t);
     localStorage.setItem("nudge-theme", t);
+    document.cookie = `nudge-theme=${t}; path=/; max-age=31536000; SameSite=Lax`;
   }
 
   return (

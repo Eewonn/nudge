@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 // Extend Window for webkit prefix
 interface SpeechRecognitionEvent extends Event {
@@ -12,6 +12,7 @@ interface SpeechRecognitionResultList {
 }
 interface SpeechRecognitionResult {
   [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
 }
 interface SpeechRecognitionAlternative {
   transcript: string;
@@ -43,11 +44,12 @@ export interface SpeechInputHandle {
 
 export function useSpeechInput(): SpeechInputHandle {
   const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(false);
   const recogRef = useRef<SpeechRecognitionInstance | null>(null);
 
-  const supported =
-    typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  useEffect(() => {
+    setSupported("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  }, []);
 
   const start = useCallback(
     (onResult: (text: string) => void) => {
@@ -55,16 +57,23 @@ export function useSpeechInput(): SpeechInputHandle {
       const SR: new () => SpeechRecognitionInstance =
         window.SpeechRecognition ?? window.webkitSpeechRecognition;
       const recog = new SR();
-      recog.continuous = false;
+      recog.continuous = true;
       recog.interimResults = false;
       recog.lang = "en-US";
+      let accumulated = "";
       recog.onstart  = () => setListening(true);
-      recog.onend    = () => setListening(false);
+      recog.onend    = () => {
+        setListening(false);
+        const text = accumulated.trim();
+        if (text) onResult(text);
+      };
       recog.onerror  = () => setListening(false);
       recog.onresult = (e: SpeechRecognitionEvent) => {
-        const results = Array.from({ length: e.results.length }, (_, i) => e.results[i]);
-        const text = results.map((r) => r[0].transcript).join(" ").trim();
-        if (text) onResult(text);
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) {
+            accumulated += e.results[i][0].transcript + " ";
+          }
+        }
       };
       recogRef.current = recog;
       recog.start();

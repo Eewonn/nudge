@@ -322,7 +322,8 @@ export default function DashboardClient({
       try {
         const parsed = await parseVoiceCapture(text);
         setCaptureDefaults(parsed);
-      } catch {
+      } catch (err) {
+        console.error("[voice capture] parseVoiceCapture failed:", err);
         setCaptureDefaults({ title: text, due_at: null, importance: "medium", category: "personal", notes: null });
       } finally {
         setParsing(false);

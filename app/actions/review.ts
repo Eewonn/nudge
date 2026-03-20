@@ -27,15 +27,16 @@ export async function getTodayReview(): Promise<DailyReview | null> {
   return data as DailyReview | null;
 }
 
-export async function getRecentReviews(limit = 7): Promise<DailyReview[]> {
+export async function getRecentReviews(limit?: number): Promise<DailyReview[]> {
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await supabase
+  let query = supabase
     .from("daily_reviews")
     .select("*")
     .lt("review_date", today)
-    .order("review_date", { ascending: false })
-    .limit(limit);
+    .order("review_date", { ascending: false });
+  if (limit) query = query.limit(limit);
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return data as DailyReview[];
 }

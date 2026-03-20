@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { Plus, Pencil, Trash2, Archive, X } from "lucide-react";
-import { toggleTask, deleteTask } from "@/app/actions/tasks";
+import { Plus, Pencil, Trash2, Archive, X, Search, Repeat } from "lucide-react";
+import { toggleTask, deleteTask, stopRecurrence } from "@/app/actions/tasks";
 import type { Task, GroupedTasks, TaskGroup } from "@/types";
 import { getTaskUrgency } from "@/lib/priority";
 import TaskForm from "./TaskForm";
@@ -125,6 +125,19 @@ function KanbanCard({ task, urgency }: { task: Task; urgency: TaskGroup }) {
                 >
                   <Pencil className="h-[11px] w-[11px]" />
                 </button>
+                {task.recurrence_rule && (
+                  <button
+                    onClick={() => startTransition(() => stopRecurrence(task.id))}
+                    disabled={pending}
+                    title="Stop repeating"
+                    className="rounded-md p-1 transition-colors duration-100"
+                    style={{ color: "var(--text-3)" }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "var(--warning-subtle)"; (e.currentTarget as HTMLElement).style.color = "var(--warning)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
+                  >
+                    <Repeat className="h-[11px] w-[11px]" />
+                  </button>
+                )}
                 <button
                   onClick={handleDelete}
                   className="rounded-md p-1 transition-colors duration-100"
@@ -457,6 +470,7 @@ function ArchiveCard({ task }: { task: Task }) {
 export default function TaskList({ grouped, completedTasks }: Props) {
   const [creating, setCreating] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -470,6 +484,16 @@ export default function TaskList({ grouped, completedTasks }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  const q = search.toLowerCase().trim();
+  const filteredGrouped = q
+    ? {
+        overdue:  grouped.overdue.filter( (t) => t.title.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q)),
+        today:    grouped.today.filter(   (t) => t.title.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q)),
+        upcoming: grouped.upcoming.filter((t) => t.title.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q)),
+        someday:  grouped.someday.filter( (t) => t.title.toLowerCase().includes(q) || t.category?.toLowerCase().includes(q)),
+      }
+    : grouped;
 
   const totalActive   = Object.values(grouped).reduce((n, arr) => n + arr.length, 0);
   const overdueCount  = grouped.overdue.length;
@@ -524,6 +548,42 @@ export default function TaskList({ grouped, completedTasks }: Props) {
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* Search */}
+          <div
+            className="relative flex items-center"
+            style={{ width: "220px" }}
+          >
+            <Search
+              className="absolute left-3 h-3.5 w-3.5 pointer-events-none"
+              style={{ color: "var(--text-3)" }}
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search tasks…"
+              className="w-full rounded-xl pl-8 pr-3 py-2 text-sm outline-none transition-all"
+              style={{
+                backgroundColor: "var(--surface)",
+                border: "1px solid var(--border)",
+                color: "var(--text)",
+              }}
+              onFocus={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
+              onBlur={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 rounded p-0.5 transition-colors"
+                style={{ color: "var(--text-3)" }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-3)"; }}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
           {/* Archive button */}
           <button
             onClick={() => setArchiveOpen(true)}
@@ -577,8 +637,8 @@ export default function TaskList({ grouped, completedTasks }: Props) {
             key={key}
             label={label}
             accent={accent}
-            tasks={grouped[key]}
-            emptyText={emptyText}
+            tasks={filteredGrouped[key]}
+            emptyText={q ? "No matches" : emptyText}
             urgency={key}
             index={i}
             onAdd={() => setCreating(true)}

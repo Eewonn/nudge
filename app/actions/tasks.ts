@@ -61,6 +61,17 @@ export async function deleteTask(id: string): Promise<void> {
   revalidatePath("/dashboard");
 }
 
+export async function stopRecurrence(id: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tasks")
+    .update({ recurrence_rule: null })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/tasks");
+  revalidatePath("/dashboard");
+}
+
 export async function toggleTask(id: string, isCompleted: boolean): Promise<void> {
   const supabase = await createClient();
 

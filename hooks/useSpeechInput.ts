@@ -5,6 +5,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 // Extend Window for webkit prefix
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
+  resultIndex: number;
 }
 interface SpeechRecognitionResultList {
   [index: number]: SpeechRecognitionResult;

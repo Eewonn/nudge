@@ -21,7 +21,7 @@ export default async function ReviewPage() {
 
   const [existing, recentReviews, tasks, logs] = await Promise.all([
     getTodayReview(),
-    getRecentReviews(7),
+    getRecentReviews(),
     getTasks(),
     getHabitLogs(60),
   ]);

@@ -13,8 +13,10 @@ import DashboardClient from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
 
+const TZ = "Asia/Manila";
+
 function greeting(name: string) {
-  const h = new Date().getHours();
+  const h = parseInt(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: TZ }).format(new Date()));
   const time = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
   return `${time}, ${name}.`;
 }
@@ -30,7 +32,7 @@ export default async function DashboardPage() {
   ]);
 
   const grouped = groupTasks(tasks);
-  const today   = new Date().toISOString().slice(0, 10);
+  const today   = new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 
   const streak        = computeStreak(tasks, logs);
   const longestStreak = computeLongestStreak(tasks, logs);
@@ -48,6 +50,8 @@ export default async function DashboardPage() {
     || firstNameFromEmail(user?.email ?? "there");
   const greetingText = greeting(firstName);
 
+  const somedayCount = grouped.someday.length;
+
   // Urgent = overdue + high/medium importance today
   const urgentTasks = [
     ...grouped.overdue,
@@ -62,6 +66,7 @@ export default async function DashboardPage() {
       longestStreak={longestStreak}
       rhythm={rhythm}
       urgentTasks={urgentTasks}
+      somedayCount={somedayCount}
       activeHabits={activeHabits}
       allHabits={habits}
       habitLogs={logs.filter((l) => l.date === today)}

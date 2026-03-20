@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition, useEffect } from "react";
 import { Zap, Plus, Pencil, Archive, Mic, MicOff } from "lucide-react";
 import { toggleHabitLog, archiveHabit } from "@/app/actions/habits";
+import { toggleTask } from "@/app/actions/tasks";
 import { useRouter } from "next/navigation";
 import TaskForm from "@/components/TaskForm";
 import HabitForm from "@/components/HabitForm";
@@ -14,10 +15,10 @@ import type { DailyCompletion, DayRhythm } from "@/lib/stats";
 
 // ── Weekly Rhythm bar chart ──────────────────────────────────────────────────
 
-function WeeklyRhythm({ rhythm }: { rhythm: DayRhythm[] }) {
+function WeeklyRhythm({ rhythm, today }: { rhythm: DayRhythm[]; today: string }) {
   const max = Math.max(...rhythm.map((d) => d.count), 1);
-  const today = new Date().toISOString().slice(0, 10);
   const hasRhythmData = rhythm.some((d) => d.count > 0);
+  const weekTotal = rhythm.reduce((sum, d) => sum + d.count, 0);
 
   return (
     <div
@@ -72,6 +73,11 @@ function WeeklyRhythm({ rhythm }: { rhythm: DayRhythm[] }) {
       >
         <p className="text-xs" style={{ color: "var(--text-3)" }}>
           Weekly completion rhythm
+          {weekTotal > 0 && (
+            <span className="ml-2 font-semibold" style={{ color: "var(--text-2)" }}>
+              · {weekTotal} task{weekTotal !== 1 ? "s" : ""} this week
+            </span>
+          )}
         </p>
         <Link
           href="/tasks"
@@ -92,7 +98,7 @@ function daysOverdue(due_at: string): number {
   return Math.floor(ms / (1000 * 60 * 60 * 24));
 }
 
-function TaskCard({ task }: { task: Task }) {
+function TaskCard({ task, onComplete }: { task: Task; onComplete: () => void }) {
   const now = new Date();
   const isOverdue = task.due_at && new Date(task.due_at) < now;
   const overdueDays = isOverdue && task.due_at ? daysOverdue(task.due_at) : 0;
@@ -168,9 +174,11 @@ function TaskCard({ task }: { task: Task }) {
       </div>
 
       {/* Hover checkmark */}
-      <div
-        className="w-9 h-9 rounded-full border-2 flex items-center justify-center mr-5 shrink-0 transition-all duration-200"
+      <button
+        onClick={onComplete}
+        className="w-9 h-9 rounded-full border-2 flex items-center justify-center mr-5 shrink-0 transition-all duration-200 hover:border-accent"
         style={{ borderColor: "var(--border-strong)" }}
+        title="Mark complete"
       >
         <svg
           className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100"
@@ -179,7 +187,7 @@ function TaskCard({ task }: { task: Task }) {
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
-      </div>
+      </button>
     </div>
   );
 }
@@ -258,6 +266,7 @@ interface Props {
   longestStreak: number;
   rhythm: DayRhythm[];
   urgentTasks: Task[];
+  somedayCount: number;
   activeHabits: Habit[];
   allHabits: Habit[];
   habitLogs: HabitLog[];
@@ -286,6 +295,7 @@ export default function DashboardClient({
   longestStreak,
   rhythm,
   urgentTasks,
+  somedayCount,
   activeHabits,
   allHabits,
   habitLogs,
@@ -322,8 +332,7 @@ export default function DashboardClient({
       try {
         const parsed = await parseVoiceCapture(text);
         setCaptureDefaults(parsed);
-      } catch (err) {
-        console.error("[voice capture] parseVoiceCapture failed:", err);
+      } catch {
         setCaptureDefaults({ title: text, due_at: null, importance: "medium", category: "personal", notes: null });
       } finally {
         setParsing(false);
@@ -504,9 +513,28 @@ export default function DashboardClient({
             ) : (
               <div className="space-y-4">
                 {urgentTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} />
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onComplete={() => startTransition(async () => { await toggleTask(task.id, true); router.refresh(); })}
+                  />
                 ))}
               </div>
+            )}
+            {somedayCount > 0 && (
+              <Link
+                href="/tasks"
+                className="mt-4 flex items-center gap-2 text-xs font-medium transition-colors"
+                style={{ color: "var(--text-3)" }}
+              >
+                <span
+                  className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  style={{ backgroundColor: "var(--surface-2)", color: "var(--text-3)" }}
+                >
+                  {somedayCount}
+                </span>
+                undated task{somedayCount !== 1 ? "s" : ""} in your backlog →
+              </Link>
             )}
           </section>
 
@@ -518,7 +546,7 @@ export default function DashboardClient({
               </h2>
               <div className="h-px flex-1" style={{ backgroundColor: "var(--border)" }} />
             </div>
-            <WeeklyRhythm rhythm={rhythm} />
+            <WeeklyRhythm rhythm={rhythm} today={today} />
           </section>
         </div>
 

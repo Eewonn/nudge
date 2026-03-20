@@ -2,8 +2,10 @@ import type { Task, HabitLog } from "@/types";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+const TZ = "Asia/Manila"; // UTC+8 — single-user app
+
 function toDateStr(d: Date) {
-  return d.toISOString().slice(0, 10);
+  return d.toLocaleDateString("en-CA", { timeZone: TZ }); // YYYY-MM-DD in Manila time
 }
 
 /** Set of YYYY-MM-DD strings where the user did something */
@@ -71,13 +73,14 @@ export interface DailyCompletion {
  */
 export function computeDailyCompletion(tasks: Task[], now = new Date()): DailyCompletion {
   const todayStr = toDateStr(now);
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-  const startOfTomorrow = new Date(startOfToday);
+  // Manila midnight as UTC timestamp
+  const startOfToday    = new Date(`${todayStr}T00:00:00+08:00`);
+  const startOfTomorrow = new Date(`${todayStr}T00:00:00+08:00`);
   startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
 
   const completedToday = tasks.filter(
-    (t) => t.is_completed && t.completed_at && t.completed_at.slice(0, 10) === todayStr
+    (t) => t.is_completed && t.completed_at &&
+      new Date(t.completed_at).toLocaleDateString("en-CA", { timeZone: TZ }) === todayStr
   ).length;
 
   const pendingDueToday = tasks.filter((t) => {
@@ -111,7 +114,8 @@ export function computeWeeklyRhythm(tasks: Task[], days = 7, now = new Date()): 
     d.setDate(d.getDate() - (days - 1 - i));
     const ds = toDateStr(d);
     const count = tasks.filter(
-      (t) => t.is_completed && t.completed_at?.slice(0, 10) === ds
+      (t) => t.is_completed && t.completed_at &&
+        new Date(t.completed_at).toLocaleDateString("en-CA", { timeZone: TZ }) === ds
     ).length;
     return { date: ds, label: DAY_INITIALS[d.getDay()], count };
   });

@@ -47,7 +47,6 @@ No explanation, no markdown, just the JSON object.`,
   });
 
   const raw = completion.choices[0]?.message?.content?.trim() ?? "";
-  console.log("[capture] Groq raw response:", raw);
 
   const parsed = JSON.parse(raw) as ParsedTask;
 

@@ -1,4 +1,4 @@
-import type { Task } from "@/types";
+import type { Task, Event } from "@/types";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
@@ -25,6 +25,30 @@ function formatDue(due_at: string) {
     hour: "numeric", minute: "2-digit",
   });
 }
+
+function formatEventTime(start_at: string, end_at: string | null, is_all_day: boolean) {
+  if (is_all_day) {
+    return new Date(start_at).toLocaleDateString("en-US", {
+      weekday: "short", month: "short", day: "numeric",
+    });
+  }
+  const start = new Date(start_at).toLocaleString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit",
+  });
+  if (!end_at) return start;
+  const end = new Date(end_at).toLocaleTimeString("en-US", {
+    hour: "numeric", minute: "2-digit",
+  });
+  return `${start} – ${end}`;
+}
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  meeting: "Meeting",
+  event: "Event",
+  block: "Focus Block",
+  reminder: "Reminder",
+};
 
 function impColor(importance: string): string {
   if (importance === "high")   return RED;
@@ -313,5 +337,86 @@ export function overdueOnce(task: Task): { subject: string; html: string } {
   return {
     subject: `Nudge — "${task.title}" is overdue`,
     html: layout("Overdue task", body, RED),
+  };
+}
+
+// ── Event starting in 24 hours ────────────────────────────────────────────────
+
+export function eventReminder24h(event: Event): { subject: string; html: string } {
+  const timeStr  = formatEventTime(event.start_at, event.end_at, event.is_all_day);
+  const color    = impColor(event.importance);
+  const typeLabel = EVENT_TYPE_LABELS[event.type] ?? "Event";
+  const locPart  = event.location
+    ? `<td><span style="font-size:11px;font-weight:600;color:${MUTED_MID};text-transform:uppercase;letter-spacing:.08em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Location</span><br/><span style="font-size:13px;color:${NAVY};font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${event.location}</span></td>`
+    : "";
+
+  const body = `
+    <p style="margin:0 0 2px;font-size:11px;font-weight:600;color:${MUTED_MID};text-transform:uppercase;letter-spacing:.12em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${typeLabel} Reminder</p>
+    <h1 style="margin:0 0 6px;font-size:24px;font-weight:700;color:${NAVY};letter-spacing:-0.5px;line-height:1.2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Starting in 24 hours</h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${MUTED};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Make sure you're prepared.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid ${BORDER};margin-bottom:8px;">
+      <tr>
+        <td width="4" style="background:${color};width:4px;">&nbsp;</td>
+        <td style="padding:16px 18px;background:${SURFACE};">
+          <div style="font-size:16px;font-weight:700;color:${NAVY};margin-bottom:6px;letter-spacing:-0.3px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${event.title}</div>
+          <table cellpadding="0" cellspacing="0"><tr>
+            <td style="padding-right:12px;">
+              <span style="font-size:11px;font-weight:600;color:${MUTED_MID};text-transform:uppercase;letter-spacing:.08em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">When</span><br/>
+              <span style="font-size:13px;color:${AMBER};font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${timeStr}</span>
+            </td>
+            ${locPart}
+          </tr></table>
+        </td>
+      </tr>
+    </table>`;
+
+  return {
+    subject: `Nudge — "${event.title}" starts tomorrow`,
+    html: layout(`${typeLabel} in 24 hours`, body, AMBER),
+  };
+}
+
+// ── Event starting in 2 hours ─────────────────────────────────────────────────
+
+export function eventReminder2h(event: Event): { subject: string; html: string } {
+  const timeStr   = formatEventTime(event.start_at, event.end_at, event.is_all_day);
+  const typeLabel = EVENT_TYPE_LABELS[event.type] ?? "Event";
+  const locPart   = event.location
+    ? `<td><span style="font-size:11px;font-weight:600;color:${MUTED_MID};text-transform:uppercase;letter-spacing:.08em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Location</span><br/><span style="font-size:13px;color:${NAVY};font-weight:500;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${event.location}</span></td>`
+    : "";
+
+  const body = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+      <tr>
+        <td style="background:#fef3c7;border:1px solid ${AMBER_BORD};border-radius:8px;padding:10px 14px;">
+          <span style="font-size:12px;font-weight:700;color:${AMBER};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">⚡&nbsp;&nbsp;${typeLabel} starting in 2 hours</span>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0 0 2px;font-size:11px;font-weight:600;color:${MUTED_MID};text-transform:uppercase;letter-spacing:.12em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Coming Up</p>
+    <h1 style="margin:0 0 6px;font-size:24px;font-weight:700;color:${NAVY};letter-spacing:-0.5px;line-height:1.2;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Starting soon</h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${MUTED};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Time to wrap up and get ready.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid ${AMBER_BORD};margin-bottom:8px;">
+      <tr>
+        <td width="4" style="background:${RED};width:4px;">&nbsp;</td>
+        <td style="padding:16px 18px;background:${AMBER_BG};">
+          <div style="font-size:16px;font-weight:700;color:${NAVY};margin-bottom:6px;letter-spacing:-0.3px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${event.title}</div>
+          <table cellpadding="0" cellspacing="0"><tr>
+            <td style="padding-right:12px;">
+              <span style="font-size:11px;font-weight:600;color:${MUTED_MID};text-transform:uppercase;letter-spacing:.08em;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">When</span><br/>
+              <span style="font-size:13px;color:${RED};font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">${timeStr}</span>
+            </td>
+            ${locPart}
+          </tr></table>
+        </td>
+      </tr>
+    </table>`;
+
+  return {
+    subject: `Nudge — ⚡ "${event.title}" starts in 2 hours`,
+    html: layout(`${typeLabel} in 2 hours`, body, RED),
   };
 }

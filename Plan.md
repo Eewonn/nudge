@@ -90,24 +90,29 @@ Nudge is a **personal hub** for staying on track and not missing what matters. N
 
 ---
 
-### Phase 7 — Events & Calendar (planned)
+### Phase 7 — Events & Calendar (current)
 
 > Expanding Nudge from task management to a full personal hub: tasks, events, meetings, and schedules all in one place.
 
-#### 7a — Events Data Model
-- [ ] Add `events` table: `id`, `title`, `notes`, `type` (meeting | event | block | reminder), `start_at`, `end_at`, `location`, `url`, `is_all_day`, `recurrence_rule`, `category`, `importance`, `user_id`
-- [ ] Migration script
-- [ ] Server actions for events CRUD (`app/actions/events.ts`)
-- [ ] Extend reminder engine to fire on events (not just tasks)
-- [ ] Extend email templates for event reminders
+#### 7a — Events Data Model ✅
+- [x] Add `events` table: `id`, `title`, `notes`, `type` (meeting | event | block | reminder), `start_at`, `end_at`, `location`, `url`, `is_all_day`, `recurrence_rule`, `category`, `importance`, `user_id`
+- [x] Migration script (`004_events.sql`)
+- [x] Server actions for events CRUD (`app/actions/events.ts`)
+- [x] Extend reminder engine to fire on events (not just tasks) — `event-24h`, `event-2h` types
+- [x] Extend email templates for event reminders (`eventReminder24h`, `eventReminder2h`)
+- [x] `reminder_logs` migrated: `task_id` → `entity_id` + `entity_type`
 
-#### 7b — Calendar View
-- [ ] Week view: time-grid showing events + tasks with due times
-- [ ] Month view: dot indicators per day, click to see day detail
-- [ ] Day view: hourly blocks
-- [ ] Tasks with `due_at` appear as anchored items on the calendar
-- [ ] Events appear as time-range blocks
-- [ ] Create event/task directly from calendar by clicking a time slot
+#### 7b — Calendar View ✅
+- [x] Week view: time-grid showing events + tasks with due times
+- [x] Month view: dot indicators per day, click to switch to day view
+- [x] Day view: hourly blocks with event blocks and task chips
+- [x] Tasks with `due_at` appear as anchored chips on the calendar
+- [x] Events appear as time-range blocks with type colors
+- [x] Create event/task directly from calendar by clicking a time slot (QuickCreateModal)
+- [x] All-day events strip in week/day views
+- [x] Current-time "now" indicator line
+- [x] Overlap detection for concurrent events (column layout)
+- [x] Calendar added to sidebar + mobile bottom nav
 
 #### 7c — Event Capture & Editing
 - [ ] Event capture form (title, type, start/end time, location, recurrence)

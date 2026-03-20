@@ -1,5 +1,7 @@
 export type Importance = "low" | "medium" | "high";
 
+export type EventType = "meeting" | "event" | "block" | "reminder";
+
 export type Category =
   | "work"
   | "personal"
@@ -46,6 +48,24 @@ export interface DailyReview {
   review_date: string; // YYYY-MM-DD
   summary: string;
   top_3_for_tomorrow: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Event {
+  id: string;
+  user_id: string;
+  title: string;
+  notes: string | null;
+  type: EventType;
+  start_at: string; // ISO string
+  end_at: string | null;
+  location: string | null;
+  url: string | null;
+  is_all_day: boolean;
+  recurrence_rule: string | null;
+  category: Category;
+  importance: Importance;
   created_at: string;
   updated_at: string;
 }

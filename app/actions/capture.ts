@@ -11,7 +11,7 @@ export interface ParsedTask {
   notes:      string | null;
 }
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY, timeout: 8000 });
 
 const CATEGORIES: Category[] = ["work", "personal", "academics", "acm", "thesis", "other"];
 const IMPORTANCES: Importance[] = ["low", "medium", "high"];
@@ -32,7 +32,7 @@ export async function parseVoiceCapture(transcript: string): Promise<ParsedTask>
 Today is ${todayStr} (${isoNow}).
 
 Return ONLY valid JSON with these fields:
-- title: string (concise task title, cleaned up from speech)
+- title: string (the task title — keep it close to what was said; only remove filler words like "um", "uh", "like", trailing phrases like "it's a high priority task" or "within today" that belong in other fields; do NOT rephrase or rewrite)
 - due_at: ISO 8601 string or null (resolve relative dates like "tomorrow", "Friday", "in 2 hours" to absolute UTC times; use null if no deadline mentioned)
 - importance: "low" | "medium" | "high" (infer from urgency words; default "medium")
 - category: "work" | "personal" | "academics" | "acm" | "thesis" | "other" (infer from context; default "personal")

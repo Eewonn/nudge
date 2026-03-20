@@ -306,6 +306,7 @@ export default function DashboardClient({
   const [creating, setCreating] = useState(false);
   const [captureDefaults, setCaptureDefaults] = useState<ParsedTask | undefined>();
   const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState(false);
   const [habitFormOpen, setHabitFormOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [, startTransition] = useTransition();
@@ -329,10 +330,12 @@ export default function DashboardClient({
     if (speech.listening) { speech.stop(); return; }
     speech.start(async (text) => {
       setParsing(true);
+      setParseError(false);
       try {
         const parsed = await parseVoiceCapture(text);
         setCaptureDefaults(parsed);
       } catch {
+        setParseError(true);
         setCaptureDefaults({ title: text, due_at: null, importance: "medium", category: "personal", notes: null });
       } finally {
         setParsing(false);
@@ -389,8 +392,8 @@ export default function DashboardClient({
           >
             <Zap className="h-4 w-4 text-white" />
           </div>
-          <span className="flex-1 text-sm font-medium" style={{ color: "var(--text-3)" }}>
-            {parsing ? "Parsing your task…" : speech.listening ? "Listening… speak your task" : "What do you need to get done?"}
+          <span className="flex-1 text-sm font-medium" style={{ color: parseError ? "var(--warning)" : "var(--text-3)" }}>
+            {parsing ? "Parsing your task…" : speech.listening ? "Listening… speak your task" : parseError ? "AI parse failed — form pre-filled with your words" : "What do you need to get done?"}
           </span>
           <span
             className="sovereign-gradient rounded-lg px-3 py-1.5 text-xs font-bold text-white opacity-0 group-hover:opacity-100 transition-all duration-200"
@@ -751,7 +754,7 @@ export default function DashboardClient({
       {creating && (
         <TaskForm
           defaults={captureDefaults}
-          onClose={() => { setCreating(false); setCaptureDefaults(undefined); }}
+          onClose={() => { setCreating(false); setCaptureDefaults(undefined); setParseError(false); }}
         />
       )}
       {habitFormOpen && (

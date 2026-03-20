@@ -59,16 +59,7 @@ function impColor(importance: string): string {
 // ── Logo mark (inline HTML — works without external images) ─────────────────
 
 const LOGO = `
-<table cellpadding="0" cellspacing="0">
-  <tr>
-    <td style="background:${BLUE};border-radius:10px;width:36px;height:36px;text-align:center;vertical-align:middle;">
-      <span style="color:#fff;font-weight:800;font-size:18px;line-height:36px;letter-spacing:-1px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">N</span>
-    </td>
-    <td style="padding-left:10px;vertical-align:middle;">
-      <span style="font-size:17px;font-weight:700;color:${NAVY};letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Nudge</span>
-    </td>
-  </tr>
-</table>`;
+<span style="font-size:17px;font-weight:700;color:${NAVY};letter-spacing:-0.5px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">Nudge</span>`;
 
 // ── Task card row ────────────────────────────────────────────────────────────
 
